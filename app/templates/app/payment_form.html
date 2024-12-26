@@ -1,0 +1,57 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Record Payment - Order Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Record Payment</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" id="paymentForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                        {{ form.customer }}
+                        {{ form.customer.errors }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.amount_received.id_for_label }}" class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            {{ form.amount_received }}
+                        </div>
+                        {{ form.amount_received.errors }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes }}
+                        {{ form.notes.errors }}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Record Payment</button>
+                        <a href="{% url 'app:payment-list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Add any payment form specific JavaScript here
+        $('#id_customer').addClass('form-select');
+        $('#id_amount_received').addClass('form-control');
+        $('#id_notes').addClass('form-control');
+    });
+</script>
+{% endblock %} 

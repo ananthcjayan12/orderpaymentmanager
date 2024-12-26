@@ -1,0 +1,205 @@
+/* Screen styles - Only for preview */
+.receipt-container {
+    width: 80mm;
+    margin: 20px auto;
+    font-family: 'Courier New', monospace;
+    border: 1px solid #ddd;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Print styles */
+@media print {
+    @page {
+        size: 80mm auto;  /* Width fixed, height auto */
+        margin: 0mm;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: 'Courier New', monospace;
+        width: 80mm;
+    }
+
+    body * {
+        visibility: hidden;
+    }
+    
+    .receipt-container, .receipt-container * {
+        visibility: visible;
+    }
+
+    .receipt-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 76mm;  /* Slightly smaller to account for printer margins */
+        margin: 2mm;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    /* Basic Receipt Styling */
+    .receipt {
+        padding: 2mm;
+        font-size: 10pt;
+        line-height: 1.2;
+    }
+
+    /* Store Header */
+    .store-header {
+        text-align: center;
+        margin-bottom: 3mm;
+    }
+
+    .store-header h2 {
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 0 0 2mm 0;
+        font-family: 'Courier New', monospace;
+    }
+
+    .store-header p {
+        margin: 0.5mm 0;
+        font-size: 9pt;
+    }
+
+    /* Receipt Title */
+    .receipt-title {
+        text-align: center;
+        font-size: 10pt;
+        font-weight: bold;
+        padding: 2mm 0;
+        margin: 2mm 0;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+    }
+
+    /* Amount Display */
+    .amount-display {
+        text-align: center;
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 2mm 0;
+        padding: 1mm;
+        border: 1px solid #000;
+    }
+
+    /* Details Section */
+    .detail-section {
+        margin: 2mm 0;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 1mm 0;
+        font-size: 9pt;
+    }
+
+    .detail-label {
+        min-width: 20mm;
+    }
+
+    /* Dotted Lines */
+    .dotted-line {
+        border-top: 1px dotted #000;
+        margin: 2mm 0;
+    }
+
+    /* Table Styling */
+    .receipt-table {
+        width: 100%;
+        margin: 2mm 0;
+        border-collapse: collapse;
+        font-size: 9pt;
+    }
+
+    .receipt-table th,
+    .receipt-table td {
+        text-align: left;
+        padding: 1mm 0;
+    }
+
+    .amount-col {
+        text-align: right;
+    }
+
+    /* Total Section */
+    .total-section {
+        margin: 2mm 0;
+        padding: 1mm 0;
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+        font-weight: bold;
+        font-size: 10pt;
+    }
+
+    /* Notes Section */
+    .notes-section {
+        margin: 2mm 0;
+        padding: 1mm;
+        font-size: 9pt;
+        border-top: 1px dotted #000;
+        border-bottom: 1px dotted #000;
+    }
+
+    /* Barcode Section */
+    .barcode-section {
+        text-align: center;
+        margin: 3mm 0;
+        padding: 2mm 0;
+        border-top: 1px dotted #000;
+        border-bottom: 1px dotted #000;
+    }
+
+    .barcode-number {
+        font-family: 'Courier New', monospace;
+        font-size: 10pt;
+        letter-spacing: 2pt;
+    }
+
+    /* Footer Section */
+    .receipt-footer {
+        text-align: center;
+        margin-top: 3mm;
+        font-size: 9pt;
+    }
+
+    .footer-message {
+        margin: 2mm 0;
+    }
+
+    .footer-contact {
+        margin: 2mm 0;
+        font-size: 8pt;
+    }
+
+    .footer-legal {
+        margin-top: 2mm;
+        font-size: 8pt;
+        color: #000;
+    }
+
+    /* Additional Styling for Thermal Receipt Look */
+    .detail-label::after {
+        content: ":";
+    }
+
+    .detail-row span:last-child {
+        text-align: right;
+    }
+
+    /* Dashed line separator */
+    .separator {
+        border-top: 1px dashed #000;
+        margin: 2mm 0;
+    }
+} 

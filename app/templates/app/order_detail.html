@@ -1,0 +1,75 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Order #{{ order.id }} - Order Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>Order #{{ order.id }}</h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'app:order-invoice' order.pk %}" class="btn btn-primary">Print Invoice</a>
+        <a href="{% url 'app:order-list' %}" class="btn btn-secondary">Back to Orders</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Order Details</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Customer:</strong> {{ order.customer.name }}</p>
+                <p><strong>Order Date:</strong> {{ order.order_date }}</p>
+                <p><strong>Total Amount:</strong> ₹{{ order.total_amount|floatformat:2 }}</p>
+                {% if order.remarks %}
+                <p><strong>Remarks:</strong> {{ order.remarks }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Order Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.orderitems.all %}
+                            <tr>
+                                <td>{{ item.item_name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>₹{{ item.price|floatformat:2 }}</td>
+                                <td>₹{{ item.line_total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No items in this order.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" class="text-end">Total:</th>
+                                <th>₹{{ order.total_amount|floatformat:2 }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

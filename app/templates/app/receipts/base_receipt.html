@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{% static 'css/print.css' %}">
+</head>
+<body>
+    <!-- Print controls - hidden when printing -->
+    <div class="no-print" style="text-align: center; margin: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; margin-right: 10px;">Print {{ doc_type }}</button>
+        <a href="{{ back_url }}" style="padding: 10px 20px; font-size: 16px;">Back</a>
+    </div>
+
+    <!-- Receipt content -->
+    <div class="receipt-container">
+        <div class="receipt">
+            <!-- Store Header -->
+            <div class="store-header">
+                <h2>SHARMA ENTERPRISES</h2>
+                <p>123, Main Market Road</p>
+                <p>New Delhi, 110001</p>
+                <p>Tel: +91-9876543210</p>
+                <p>GSTIN: 07AABCS1234Z1ZX</p>
+            </div>
+
+            <div class="receipt-title">
+                {{ doc_type|upper }}
+            </div>
+
+            <div class="amount-display">
+                ₹{{ amount|floatformat:2 }}
+            </div>
+
+            <!-- Document Details -->
+            <div class="detail-section">
+                {% block document_details %}{% endblock %}
+            </div>
+
+            <!-- Customer Details -->
+            <div class="detail-section">
+                <div class="detail-row">
+                    <span class="detail-label">Customer</span>
+                    <span>{{ customer.name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Mobile</span>
+                    <span>{{ customer.mobile1 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Address</span>
+                    <span>{{ customer.address }}</span>
+                </div>
+            </div>
+
+            <div class="dotted-line"></div>
+
+            <!-- Items/Details Table -->
+            {% block items_table %}{% endblock %}
+
+            <!-- Notes Section -->
+            {% block notes %}{% endblock %}
+
+            <!-- Barcode Section -->
+            <div class="barcode-section">
+                <div class="barcode-number">
+                    *{{ document_number|stringformat:"010d" }}*
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="receipt-footer">
+                <div class="footer-message">
+                    {% block footer_message %}{% endblock %}
+                </div>
+                
+                <div class="footer-contact">
+                    For any queries, please contact:<br>
+                    Tel: +91-9876543210<br>
+                    Email: info@sharma.com
+                </div>
+
+                <div class="footer-legal">
+                    This is a computer generated {{ doc_type }}.<br>
+                    No signature required.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html> 

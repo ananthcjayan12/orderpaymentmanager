@@ -1,0 +1,75 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/print.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Print controls -->
+            <div class="card mb-3 no-print">
+                <div class="card-body text-center">
+                    <button onclick="window.print()" class="btn btn-primary">Print Invoice</button>
+                    <a href="{% url 'app:order-detail' order.pk %}" class="btn btn-secondary">Back to Order</a>
+                </div>
+            </div>
+
+            <!-- Invoice content -->
+            <div class="receipt">
+                <div class="receipt-header">
+                    <h2>Order Invoice</h2>
+                    <p>Order #{{ order.id }}</p>
+                    <p>Date: {{ order.order_date }}</p>
+                </div>
+
+                <div class="receipt-body">
+                    <div class="customer-details">
+                        <h5>Customer Details:</h5>
+                        <p>{{ order.customer.name }}<br>
+                        {{ order.customer.address }}<br>
+                        {{ order.customer.mobile1 }}</p>
+                    </div>
+
+                    <div class="order-details">
+                        <table class="receipt-table">
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th class="amount">Total</th>
+                            </tr>
+                            {% for item in order.orderitems.all %}
+                            <tr>
+                                <td>{{ item.item_name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>₹{{ item.price|floatformat:2 }}</td>
+                                <td class="amount">₹{{ item.line_total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="total">
+                                <td colspan="3">Total Amount</td>
+                                <td class="amount">₹{{ order.total_amount|floatformat:2 }}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    {% if order.remarks %}
+                    <div class="notes">
+                        <h5>Remarks:</h5>
+                        <p>{{ order.remarks }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="receipt-footer">
+                    <p>Thank you for your business!</p>
+                    <small>This is a computer generated invoice.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
