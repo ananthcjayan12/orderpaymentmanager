@@ -1,0 +1,275 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block title %}Monthly Report - {{ month_name }} {{ year }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header and Month Selection -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Monthly Report - {{ month_name }} {{ year }}</h2>
+        <form class="d-flex align-items-center">
+            <select name="month" class="form-select me-2">
+                {% for m in "123456789101112"|make_list %}
+                {% with month_num=m|add:"0" %}
+                <option value="{{ month_num }}" {% if month_num == month %}selected{% endif %}>
+                    {% with month_name=month_num|stringformat:"02d" %}
+                        {% if month_name == "01" %}January
+                        {% elif month_name == "02" %}February
+                        {% elif month_name == "03" %}March
+                        {% elif month_name == "04" %}April
+                        {% elif month_name == "05" %}May
+                        {% elif month_name == "06" %}June
+                        {% elif month_name == "07" %}July
+                        {% elif month_name == "08" %}August
+                        {% elif month_name == "09" %}September
+                        {% elif month_name == "10" %}October
+                        {% elif month_name == "11" %}November
+                        {% elif month_name == "12" %}December
+                        {% endif %}
+                    {% endwith %}
+                </option>
+                {% endwith %}
+                {% endfor %}
+            </select>
+            <select name="year" class="form-select me-2">
+                {% with years=5|get_range %}
+                {% for y in years %}
+                {% with year_option=current_year|subtract:y %}
+                <option value="{{ year_option }}" {% if year_option == year %}selected{% endif %}>
+                    {{ year_option }}
+                </option>
+                {% endwith %}
+                {% endfor %}
+                {% endwith %}
+            </select>
+            <button type="submit" class="btn btn-primary">View Report</button>
+        </form>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Orders</h6>
+                    <h3 class="card-text">{{ order_count }}</h3>
+                    <p class="mb-0">₹{{ order_total|floatformat:2|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Payments</h6>
+                    <h3 class="card-text">{{ payment_count }}</h3>
+                    <p class="mb-0">₹{{ payment_total|floatformat:2|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Collection Rate</h6>
+                    <h3 class="card-text">
+                        {% if order_total %}
+                            {{ payment_total|div:order_total|multiply:100|floatformat:1 }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Items Sold</h6>
+                    <h3 class="card-text">{{ total_items_sold|intcomma }}</h3>
+                    <p class="mb-0">Total Quantity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Daily Trends Chart -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Daily Sales Trends</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyTrendsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Items Pie Chart -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Top Items Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="topItemsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Tables Row -->
+    <div class="row">
+        <!-- Top Selling Items -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Top Selling Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_items %}
+                                <tr>
+                                    <td>{{ item.item_name }}</td>
+                                    <td>{{ item.total_quantity|intcomma }}</td>
+                                    <td>₹{{ item.total_amount|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No items sold this month</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Payment Patterns -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Customer Payment Patterns</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Payments</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pattern in customer_patterns %}
+                                <tr>
+                                    <td>{{ pattern.customer__name }}</td>
+                                    <td>{{ pattern.total_payments }}</td>
+                                    <td>₹{{ pattern.total_amount|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No payments this month</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Button -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <button onclick="window.print()" class="btn btn-lg btn-primary rounded-circle shadow">
+        <i class="bi bi-printer"></i>
+    </button>
+</div>
+
+<!-- Print Styles -->
+<style>
+    @media print {
+        .btn, form { display: none !important; }
+        .card { border: none !important; }
+        .bg-primary, .bg-success, .bg-info, .bg-warning {
+            background-color: transparent !important;
+            color: #000 !important;
+        }
+    }
+</style>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    // Daily Trends Chart
+    const dailyTrendsCtx = document.getElementById('dailyTrendsChart').getContext('2d');
+    new Chart(dailyTrendsCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for trend in daily_trends %}'{{ trend.date|date:"d M" }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Daily Sales',
+                data: [{% for trend in daily_trends %}{{ trend.total_amount|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Top Items Chart
+    const topItemsCtx = document.getElementById('topItemsChart').getContext('2d');
+    new Chart(topItemsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for item in top_items|slice:":5" %}'{{ item.item_name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for item in top_items|slice:":5" %}{{ item.total_amount }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 206, 86)',
+                    'rgb(75, 192, 192)',
+                    'rgb(153, 102, 255)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

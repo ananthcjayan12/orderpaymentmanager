@@ -1,0 +1,451 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block title %}Date Range Report{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css" rel="stylesheet">
+<style>
+
+    /* Basic styling */
+    .card {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+        border: none;
+    }
+    
+    .stats-card {
+        transition: transform 0.2s;
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Date picker styling */
+    .date-picker-container {
+        position: relative;
+        z-index: 1050;
+    }
+    
+    .date-picker-wrapper {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        background: #fff;
+        padding: 0.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .date-picker-input {
+        min-width: 280px;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        color: #333;
+        background: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .date-picker-input:hover {
+        background: #fff;
+        border-color: #0d6efd;
+    }
+    
+    .date-picker-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        outline: none;
+        background: #fff;
+    }
+
+    .btn-update {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .btn-update:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+    }
+    
+    /* Chart containers */
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        padding: 1rem;
+    }
+
+    /* Card header styling */
+    .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 1.25rem;
+    }
+
+    /* Table styling */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .table td {
+        vertical-align: middle;
+        color: #495057;
+    }
+
+    /* Alert styling */
+    .alert-info {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-left: 4px solid #0d6efd;
+    }
+
+    /* Badge styling */
+    .badge {
+        padding: 0.5em 0.8em;
+        font-weight: 500;
+    }
+
+    /* Flatpickr customization */
+    .flatpickr-calendar {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        border-radius: 8px !important;
+    }
+
+    .flatpickr-day.selected {
+        background: #0d6efd !important;
+        border-color: #0d6efd !important;
+    }
+
+    .flatpickr-day:hover {
+        background: #e9ecef !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Date Range Report</h2>
+        <div class="date-picker-container">
+            <form class="date-picker-wrapper">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="fas fa-calendar-alt text-primary"></i>
+                    </span>
+                    <input type="text" 
+                           id="daterange" 
+                           name="daterange" 
+                           class="date-picker-input border-start-0"
+                           placeholder="Select date range"
+                           value="{{ start_date|date:'Y-m-d' }} to {{ end_date|date:'Y-m-d' }}"
+                           data-start="{{ start_date|date:'Y-m-d' }}"
+                           data-end="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <button type="submit" class="btn btn-primary btn-update">
+                    <i class="fas fa-sync-alt me-2"></i>Update Report
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Period Info -->
+    <div class="alert alert-info mb-4">
+        <h6 class="mb-2"><i class="fas fa-calendar-alt me-2"></i>Comparing Periods:</h6>
+        <div class="ms-3">
+            <div>Current: {{ start_date|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }} ({{ period_length }} days)</div>
+            <div>Previous: {{ prev_start_date|date:"M d, Y" }} to {{ prev_end_date|date:"M d, Y" }}</div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Orders -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-shopping-cart me-2"></i>Orders
+                    </h6>
+                    <h3 class="mb-1">{{ current_stats.order_count }}</h3>
+                    <p class="text-muted">₹{{ current_stats.total_amount|floatformat:2|intcomma }}</p>
+                    <span class="badge {% if growth_stats.order_count_growth >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ growth_stats.order_count_growth|floatformat:1 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-money-bill-wave me-2"></i>Payments
+                    </h6>
+                    <h3 class="mb-1">{{ current_payment_total.payment_count }}</h3>
+                    <p class="text-muted">₹{{ current_payment_total.total_received|floatformat:2|intcomma }}</p>
+                    <span class="badge {% if growth_stats.payment_amount_growth >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ growth_stats.payment_amount_growth|floatformat:1 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Order Value -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-chart-line me-2"></i>Avg Order Value
+                    </h6>
+                    <h3 class="mb-1">₹{{ current_stats.avg_order_value|floatformat:2|intcomma }}</h3>
+                    <p class="text-muted">Per order</p>
+                    <span class="badge {% if growth_stats.avg_order_value_growth >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ growth_stats.avg_order_value_growth|floatformat:1 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Orders -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-calendar-day me-2"></i>Daily Orders
+                    </h6>
+                    <h3 class="mb-1">{{ current_stats.avg_daily_orders|floatformat:1 }}</h3>
+                    <p class="text-muted">Average per day</p>
+                    <span class="badge {% if growth_stats.avg_daily_orders_growth >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ growth_stats.avg_daily_orders_growth|floatformat:1 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-3 mb-4">
+        <!-- Daily Trends -->
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Daily Sales Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Items -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Top Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="itemsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Top Selling Items</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-end">Quantity</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">% of Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in current_stats.top_items %}
+                        <tr>
+                            <td>{{ item.item_name }}</td>
+                            <td class="text-end">{{ item.total_quantity|intcomma }}</td>
+                            <td class="text-end">₹{{ item.total_amount|floatformat:2|intcomma }}</td>
+                            <td class="text-end">
+                                {% if current_stats.total_amount %}
+                                    {{ item.total_amount|div:current_stats.total_amount|multiply:100|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <i class="fas fa-info-circle me-2"></i>No items sold in this period
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+<script>
+// Wait for all resources to load
+window.addEventListener('load', function() {
+    console.log('Initializing Flatpickr...');
+    
+    // Initialize Flatpickr
+    const dateInput = document.getElementById('daterange');
+    if (!dateInput) {
+        console.error('Date input not found');
+        return;
+    }
+
+    const startDate = dateInput.dataset.start;
+    const endDate = dateInput.dataset.end;
+
+    flatpickr(dateInput, {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [startDate, endDate],
+        maxDate: "today",
+        showMonths: 2,
+        animate: true,
+        static: true,
+        closeOnSelect: true,
+        onChange: function(selectedDates, dateStr) {
+            if (selectedDates.length === 2) {
+                dateInput.value = `${selectedDates[0].toISOString().split('T')[0]} to ${selectedDates[1].toISOString().split('T')[0]}`;
+            }
+        }
+    });
+
+    console.log('Initializing Charts...');
+    
+    // Initialize charts
+    try {
+        // Daily trends chart
+        const trendsCanvas = document.getElementById('trendsChart');
+        if (trendsCanvas) {
+            const trendsCtx = trendsCanvas.getContext('2d');
+            new Chart(trendsCtx, {
+                type: 'line',
+                data: {
+                    labels: [{% for trend in current_stats.daily_trends %}'{{ trend.date|date:"M d" }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: 'Daily Sales',
+                        data: [{% for trend in current_stats.daily_trends %}{{ trend.total_amount }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Trends chart initialized');
+        } else {
+            console.error('Trends chart canvas not found');
+        }
+
+        // Top items chart
+        const itemsCanvas = document.getElementById('itemsChart');
+        if (itemsCanvas) {
+            const itemsCtx = itemsCanvas.getContext('2d');
+            new Chart(itemsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [{% for item in current_stats.top_items|slice:":5" %}'{{ item.item_name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        data: [{% for item in current_stats.top_items|slice:":5" %}{{ item.total_amount }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: [
+                            '#0d6efd',
+                            '#6610f2',
+                            '#6f42c1',
+                            '#d63384',
+                            '#dc3545'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Items chart initialized');
+        } else {
+            console.error('Items chart canvas not found');
+        }
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+    }
+});
+</script>
+{% endblock %}

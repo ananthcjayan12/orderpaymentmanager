@@ -1,0 +1,204 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block title %}Daily Sales Report - {{ target_date|date:"d M Y" }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header and Date Selection -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Daily Sales Report</h2>
+        <form class="d-flex align-items-center">
+            <input type="date" name="date" value="{{ target_date|date:'Y-m-d' }}" class="form-control me-2">
+            <button type="submit" class="btn btn-primary">View Report</button>
+        </form>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Orders</h6>
+                    <h3 class="card-text">{{ order_count }}</h3>
+                    <p class="mb-0">₹{{ order_total|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Payments</h6>
+                    <h3 class="card-text">{{ payment_count }}</h3>
+                    <p class="mb-0">₹{{ payment_total|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Collection Rate</h6>
+                    <h3 class="card-text">
+                        {% if order_total %}
+                            {{ payment_total|div:order_total|multiply:100|floatformat:1 }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Average Order Value</h6>
+                    <h3 class="card-text">
+                        {% if order_count %}
+                            ₹{{ order_total|div:order_count|floatformat:2 }}
+                        {% else %}
+                            ₹0.00
+                        {% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Selling Items -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Top Selling Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_items %}
+                                <tr>
+                                    <td>{{ item.item_name }}</td>
+                                    <td>{{ item.total_quantity }}</td>
+                                    <td>₹{{ item.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No items sold today</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Tables -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Orders</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in daily_orders %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'app:order-detail' order.pk %}">
+                                            #{{ order.id }}
+                                        </a>
+                                    </td>
+                                    <td>{{ order.customer.name }}</td>
+                                    <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No orders for this day</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Payments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Receipt #</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in daily_payments %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'app:payment-receipt' payment.pk %}">
+                                            #{{ payment.id }}
+                                        </a>
+                                    </td>
+                                    <td>{{ payment.customer.name }}</td>
+                                    <td>₹{{ payment.amount_received|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No payments for this day</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Button -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <button onclick="window.print()" class="btn btn-lg btn-primary rounded-circle shadow">
+        <i class="bi bi-printer"></i>
+    </button>
+</div>
+
+<!-- Print Styles -->
+<style>
+    @media print {
+        .btn, form { display: none !important; }
+        .card { border: none !important; }
+        .bg-primary, .bg-success, .bg-info, .bg-warning {
+            background-color: transparent !important;
+            color: #000 !important;
+        }
+    }
+</style>
+{% endblock %} 
