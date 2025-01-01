@@ -43,8 +43,9 @@ INSTALLED_APPS = [
     'corsheaders',
     
     # Local apps
-    'app',
-    'reports',
+    'accounts.apps.AccountsConfig',
+    'app.apps.AppConfig',
+    'reports.apps.ReportsConfig',
 ]
 
 MIDDLEWARE = [
@@ -63,7 +64,9 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -111,11 +114,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
-    BASE_DIR / "app/static",
+    BASE_DIR / 'app' / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -135,3 +138,18 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development
 # Comment out or remove the CORS_ALLOWED_ORIGINS setting for now
 # CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+
+AUTH_USER_MODEL = 'accounts.User'
+
+# Company logo upload directory
+COMPANY_LOGO_DIR = 'company_logos/'
+
+# Authentication settings
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'accounts:company_dashboard'
+LOGOUT_REDIRECT_URL = 'accounts:login'
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]

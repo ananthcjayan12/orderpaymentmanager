@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Agent Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">Welcome, {{ request.user.get_full_name }}</h2>
+                            <p class="text-muted mb-0">Here's your performance overview.</p>
+                        </div>
+                        <div>
+                            <a href="{% url 'app:order-create' %}" class="btn btn-primary me-2">
+                                <i class="fas fa-plus me-2"></i>New Order
+                            </a>
+                            <a href="{% url 'app:payment-create' %}" class="btn btn-success">
+                                <i class="fas fa-rupee-sign me-2"></i>New Payment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <!-- Today's Collections -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-primary text-white me-3">
+                                <i class="fas fa-rupee-sign"></i>
+                            </div>
+                            <h6 class="mb-0">Today's Collections</h6>
+                        </div>
+                    </div>
+                    <h3 class="mb-0">₹{{ todays_collections|intcomma }}</h3>
+                    <div class="small text-muted mt-2">
+                        {{ todays_payments }} payments received
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Orders -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-success text-white me-3">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <h6 class="mb-0">Today's Orders</h6>
+                        </div>
+                    </div>
+                    <h3 class="mb-0">{{ todays_orders }}</h3>
+                    <div class="small text-muted mt-2">
+                        ₹{{ todays_order_amount|intcomma }} worth of orders
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collection Efficiency -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-info text-white me-3">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h6 class="mb-0">Collection Efficiency</h6>
+                        </div>
+                    </div>
+                    <h3 class="mb-0">{{ collection_efficiency }}%</h3>
+                    <div class="small text-muted mt-2">
+                        Last 30 days
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Collections -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-circle bg-warning text-white me-3">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <h6 class="mb-0">Pending Collections</h6>
+                        </div>
+                    </div>
+                    <h3 class="mb-0">₹{{ pending_collections|intcomma }}</h3>
+                    <div class="small text-muted mt-2">
+                        {{ pending_payments }} payments pending
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <!-- Recent Orders -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Orders</h5>
+                        <a href="{% url 'app:order-list' %}" class="btn btn-sm btn-link">View All</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>{{ order.id }}</td>
+                                    <td>{{ order.customer.name }}</td>
+                                    <td>₹{{ order.total_amount|intcomma }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ order.status_color }}">
+                                            {{ order.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No recent orders</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Collections -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Collections</h5>
+                        <a href="{% url 'app:payment-list' %}" class="btn btn-sm btn-link">View All</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Payment ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.id }}</td>
+                                    <td>{{ payment.customer.name }}</td>
+                                    <td>₹{{ payment.amount_received|intcomma }}</td>
+                                    <td>{{ payment.created_at|date:"d M Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No recent collections</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .icon-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card {
+        border: none;
+        border-radius: 15px;
+    }
+
+    .card-header {
+        border-bottom: 1px solid rgba(0,0,0,.125);
+        padding: 1rem;
+    }
+
+    .table > :not(caption) > * > * {
+        padding: 1rem;
+    }
+
+    .badge {
+        padding: 0.5em 0.75em;
+    }
+
+    .btn-link {
+        text-decoration: none;
+    }
+
+    .btn-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %} 

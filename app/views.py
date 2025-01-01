@@ -3,21 +3,93 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from .models import Customer, Order, OrderItem, Payment
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.contrib import messages
 from django.db import transaction
 from .forms import OrderForm, OrderItemFormSet, PaymentForm
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def home(request):
+    """Home page view."""
+    context = {
+        'user': request.user
+    }
+    
+    if request.user.is_authenticated:
+        if request.user.user_type == 'COMPANY_ADMIN':
+            # Get counts for company admin
+            context.update({
+                'customers_count': Customer.objects.filter(company=request.user.company).count(),
+                'orders_count': Order.objects.filter(company=request.user.company).count(),
+                'payments_count': Payment.objects.filter(company=request.user.company).count(),
+                'recent_activities': get_recent_activities(request.user.company)
+            })
+        elif request.user.user_type == 'AGENT':
+            # Get counts for agent
+            context.update({
+                'agent_orders_count': Order.objects.filter(agent=request.user.agent_profile).count(),
+                'agent_payments_count': Payment.objects.filter(agent=request.user.agent_profile).count(),
+                'agent_recent_activities': get_agent_recent_activities(request.user.agent_profile)
+            })
+    
+    return render(request, 'app/home.html', context)
+
+def get_recent_activities(company, limit=5):
+    """Get recent activities for a company."""
+    activities = []
+    
+    # Get recent orders
+    recent_orders = Order.objects.filter(company=company).order_by('-created_at')[:limit]
+    for order in recent_orders:
+        activities.append(f"New order #{order.id} created for {order.customer.name}")
+    
+    # Get recent payments
+    recent_payments = Payment.objects.filter(company=company).order_by('-created_at')[:limit]
+    for payment in recent_payments:
+        activities.append(f"Payment of ₹{payment.amount_received} received from {payment.customer.name}")
+    
+    # Sort combined activities by date (newest first) and limit to 5
+    return sorted(activities, reverse=True)[:limit]
+
+def get_agent_recent_activities(agent, limit=5):
+    """Get recent activities for an agent."""
+    activities = []
+    
+    # Get recent orders by the agent
+    recent_orders = Order.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    for order in recent_orders:
+        activities.append(f"You created order #{order.id} for {order.customer.name}")
+    
+    # Get recent payments collected by the agent
+    recent_payments = Payment.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    for payment in recent_payments:
+        activities.append(f"You collected ₹{payment.amount_received} from {payment.customer.name}")
+    
+    # Sort combined activities by date (newest first) and limit to 5
+    return sorted(activities, reverse=True)[:limit]
 
 # Customer Views
 class CustomerListView(LoginRequiredMixin, ListView):
+    """View for listing customers."""
     model = Customer
     template_name = 'app/customer_list.html'
     context_object_name = 'customers'
     ordering = ['name']
 
+    def get_queryset(self):
+        """Filter customers by company."""
+        return Customer.objects.filter(company=self.request.user.company)
+
 class CustomerDetailView(LoginRequiredMixin, DetailView):
+    """View for customer details."""
     model = Customer
     template_name = 'app/customer_detail.html'
+    context_object_name = 'customer'
+
+    def get_queryset(self):
+        """Filter customers by company."""
+        return Customer.objects.filter(company=self.request.user.company)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -27,23 +99,41 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
         return context
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):
+    """View for creating a new customer."""
     model = Customer
     template_name = 'app/customer_form.html'
     fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number']
     success_url = reverse_lazy('app:customer-list')
 
+    def form_valid(self, form):
+        """Set the company before saving."""
+        form.instance.company = self.request.user.company
+        return super().form_valid(form)
+
 # Order Views
 class OrderListView(LoginRequiredMixin, ListView):
+    """View for listing orders."""
     model = Order
     template_name = 'app/order_list.html'
     context_object_name = 'orders'
     ordering = ['-order_date']
 
+    def get_queryset(self):
+        """Filter orders by company."""
+        return Order.objects.filter(company=self.request.user.company)
+
 class OrderDetailView(LoginRequiredMixin, DetailView):
+    """View for order details."""
     model = Order
     template_name = 'app/order_detail.html'
+    context_object_name = 'order'
+
+    def get_queryset(self):
+        """Filter orders by company."""
+        return Order.objects.filter(company=self.request.user.company)
 
 class OrderCreateView(LoginRequiredMixin, CreateView):
+    """View for creating a new order."""
     model = Order
     form_class = OrderForm
     template_name = 'app/order_form.html'
@@ -70,8 +160,9 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         return data
 
     def form_valid(self, form):
-        context = self.get_context_data()
-        formset = context['items']
+        """Set the company and agent before saving."""
+        form.instance.company = self.request.user.company
+        form.instance.agent = self.request.user.agent_profile
         
         try:
             with transaction.atomic():
@@ -98,12 +189,18 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
 # Payment Views
 class PaymentListView(LoginRequiredMixin, ListView):
+    """View for listing payments."""
     model = Payment
     template_name = 'app/payment_list.html'
     context_object_name = 'payments'
     ordering = ['-payment_date']
 
+    def get_queryset(self):
+        """Filter payments by company."""
+        return Payment.objects.filter(company=self.request.user.company)
+
 class PaymentCreateView(LoginRequiredMixin, CreateView):
+    """View for creating a new payment."""
     model = Payment
     form_class = PaymentForm
     template_name = 'app/payment_form.html'
@@ -122,6 +219,9 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
         return super().get_success_url()
 
     def form_valid(self, form):
+        """Set the company and agent before saving."""
+        form.instance.company = self.request.user.company
+        form.instance.agent = self.request.user.agent_profile
         response = super().form_valid(form)
         messages.success(self.request, 'Payment recorded successfully')
         return response
@@ -160,6 +260,3 @@ class OrderInvoiceView(LoginRequiredMixin, DetailView):
             'back_url': reverse_lazy('app:order-detail', kwargs={'pk': self.object.pk})
         })
         return context
-
-def home(request):
-    return redirect('app:customer-list')

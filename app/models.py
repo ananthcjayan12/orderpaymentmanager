@@ -1,8 +1,15 @@
 from django.db import models
 from django.db.models import Sum, F
 from django.utils import timezone
+from accounts.models import Company, Agent
 
 class Customer(models.Model):
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='customers',
+        null=True
+    )
     name = models.CharField(max_length=100)
     address = models.TextField()
     mobile1 = models.CharField(max_length=15)
@@ -13,7 +20,7 @@ class Customer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.company.name if self.company else 'No Company'}"
 
     @property
     def outstanding_balance(self):
@@ -30,6 +37,18 @@ class Customer(models.Model):
         return orders_total - payments_total
 
 class Order(models.Model):
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='orders',
+        null=True
+    )
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='orders'
+    )
     customer = models.ForeignKey(
         Customer, 
         on_delete=models.CASCADE,
@@ -42,6 +61,11 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.company_id and self.customer and self.customer.company:
+            self.company = self.customer.company
+        super().save(*args, **kwargs)
 
     @property
     def total_amount(self):
@@ -68,6 +92,18 @@ class OrderItem(models.Model):
         return self.quantity * self.price
 
 class Payment(models.Model):
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        null=True
+    )
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='payments'
+    )
     customer = models.ForeignKey(
         Customer,
         on_delete=models.CASCADE,
@@ -81,3 +117,8 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.customer.name} - {self.amount_received} on {self.payment_date}"
+
+    def save(self, *args, **kwargs):
+        if not self.company_id and self.customer and self.customer.company:
+            self.company = self.customer.company
+        super().save(*args, **kwargs)

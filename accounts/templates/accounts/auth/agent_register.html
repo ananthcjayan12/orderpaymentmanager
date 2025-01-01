@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register Agent{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h2 class="text-center mb-4">Register New Agent</h2>
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <!-- User Information -->
+                            <div class="col-md-6">
+                                <h4 class="mb-3">Account Information</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.email.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.first_name.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.last_name.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
+                                    {{ form.phone_number }}
+                                    {% if form.phone_number.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.phone_number.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
+                                    {{ form.password1 }}
+                                    {% if form.password1.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.password1.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
+                                    {{ form.password2 }}
+                                    {% if form.password2.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.password2.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Profile Information -->
+                            <div class="col-md-6">
+                                <h4 class="mb-3">Profile Information</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ profile_form.full_name.id_for_label }}" class="form-label">Full Name</label>
+                                    {{ profile_form.full_name }}
+                                    {% if profile_form.full_name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ profile_form.full_name.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ profile_form.address.id_for_label }}" class="form-label">Address</label>
+                                    {{ profile_form.address }}
+                                    {% if profile_form.address.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ profile_form.address.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ profile_form.id_proof_type.id_for_label }}" class="form-label">ID Proof Type</label>
+                                    {{ profile_form.id_proof_type }}
+                                    {% if profile_form.id_proof_type.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ profile_form.id_proof_type.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ profile_form.id_proof_number.id_for_label }}" class="form-label">ID Proof Number</label>
+                                    {{ profile_form.id_proof_number }}
+                                    {% if profile_form.id_proof_number.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ profile_form.id_proof_number.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ profile_form.role.id_for_label }}" class="form-label">Role</label>
+                                    {{ profile_form.role }}
+                                    {% if profile_form.role.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ profile_form.role.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors|join:", " }}
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile_form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ profile_form.non_field_errors|join:", " }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Register Agent</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+    }
+    
+    .btn-primary {
+        border-radius: 8px;
+        padding: 12px;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        padding: 12px;
+    }
+    
+    .form-label {
+        font-weight: 500;
+    }
+    
+    .invalid-feedback {
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %} 

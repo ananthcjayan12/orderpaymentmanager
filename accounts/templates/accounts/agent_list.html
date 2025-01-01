@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Agents - {{ company.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .agent-card {
+        transition: transform 0.3s ease;
+    }
+    
+    .agent-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .agent-stats {
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+    }
+    
+    .add-agent-btn {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 60px;
+        height: 60px;
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,.2);
+        z-index: 1000;
+    }
+    
+    .add-agent-btn i {
+        font-size: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Agents</h2>
+        <a href="{% url 'accounts:register_agent' %}" class="btn btn-primary">
+            <i class="fas fa-user-plus me-2"></i>Add New Agent
+        </a>
+    </div>
+
+    {% if agents %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+            {% for agent in agents %}
+                <div class="col">
+                    <div class="card h-100 agent-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-primary text-white rounded-circle p-3">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h5 class="card-title mb-0">{{ agent.user.get_full_name }}</h5>
+                                    <p class="text-muted mb-0">{{ agent.user.email }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-3 border rounded text-center">
+                                        <h6 class="mb-1">Orders</h6>
+                                        <p class="mb-0 h5">{{ agent.orders.count|default:"0" }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 border rounded text-center">
+                                        <h6 class="mb-1">Collections</h6>
+                                        <p class="mb-0 h5">₹{{ agent.total_collections|default:"0"|intcomma }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="agent-stats">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar me-2"></i>Joined {{ agent.created_at|naturaltime }}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-phone me-2"></i>{{ agent.phone_number|default:"No phone number" }}
+                                </p>
+                                <p class="mb-0">
+                                    <i class="fas fa-map-marker-alt me-2"></i>{{ agent.location|default:"No location set" }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between">
+                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-chart-line me-1"></i>Performance
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-cog me-1"></i>Settings
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-users fa-3x text-muted"></i>
+            </div>
+            <h4>No Agents Yet</h4>
+            <p class="text-muted">Start by adding your first agent to help manage orders and payments.</p>
+            <a href="{% url 'accounts:register_agent' %}" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i>Add New Agent
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Floating action button for mobile -->
+<a href="{% url 'accounts:register_agent' %}" class="add-agent-btn btn btn-primary d-md-none">
+    <i class="fas fa-plus"></i>
+</a>
+{% endblock %} 
