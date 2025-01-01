@@ -1,0 +1,261 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Order Template - Order Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .template-form-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .form-section {
+        background-color: var(--background-color);
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .form-section-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--surface-color);
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .form-section-body {
+        padding: 1.5rem;
+    }
+    
+    .items-table {
+        border-radius: 0.75rem;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+    
+    .items-table thead th {
+        background-color: var(--surface-color);
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border: none;
+    }
+    
+    .items-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .item-row {
+        background-color: var(--background-color);
+        transition: all 0.2s ease;
+    }
+    
+    .item-row:hover {
+        background-color: var(--surface-color);
+    }
+    
+    .floating-actions {
+        position: sticky;
+        bottom: 1rem;
+        background: var(--background-color);
+        padding: 1rem;
+        border-radius: 1rem;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+        margin-top: 2rem;
+        border: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="template-form-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="fas fa-file-alt me-2 text-primary"></i>
+            {% if object %}Edit{% else %}Create{% endif %} Order Template
+        </h2>
+    </div>
+
+    <form method="post" id="templateForm">
+        {% csrf_token %}
+        
+        <!-- Template Details Section -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <h3 class="h5 mb-0">Template Details</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Template Name</label>
+                            {{ form.name }}
+                            {{ form.name.errors }}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {{ form.description.errors }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Items Section -->
+        <div class="form-section">
+            <div class="form-section-header d-flex justify-content-between align-items-center">
+                <h3 class="h5 mb-0">Template Items</h3>
+                <button type="button" class="btn btn-primary btn-sm" id="addItem">
+                    <i class="fas fa-plus me-2"></i>Add Item
+                </button>
+            </div>
+            <div class="form-section-body">
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%">Item</th>
+                                <th style="width: 15%">Quantity</th>
+                                <th style="width: 20%">Default Price</th>
+                                <th style="width: 30%">Remarks</th>
+                                <th style="width: 5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsContainer">
+                            {% for form in formset %}
+                            <tr class="item-row">
+                                <td>
+                                    {{ form.item }}
+                                    {{ form.item.errors }}
+                                </td>
+                                <td>
+                                    {{ form.quantity }}
+                                    {{ form.quantity.errors }}
+                                </td>
+                                <td>
+                                    {{ form.default_price }}
+                                    {{ form.default_price.errors }}
+                                </td>
+                                <td>
+                                    {{ form.remarks }}
+                                    {{ form.remarks.errors }}
+                                </td>
+                                <td class="text-center">
+                                    {% if forloop.first %}
+                                    <button type="button" class="btn btn-link text-danger p-0" disabled>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-link text-danger p-0 remove-item">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                    {{ form.DELETE }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="floating-actions">
+            <div class="d-flex gap-3 justify-content-end">
+                <a href="{% url 'app:order-template-list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Save Template
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const itemsContainer = document.getElementById('itemsContainer');
+        const addItemBtn = document.getElementById('addItem');
+        const totalForms = document.getElementById('id_template_items-TOTAL_FORMS');
+        
+        // Function to update form indices
+        function updateFormIndices() {
+            const rows = itemsContainer.getElementsByClassName('item-row');
+            for (let i = 0; i < rows.length; i++) {
+                const inputs = rows[i].getElementsByTagName('input');
+                const selects = rows[i].getElementsByTagName('select');
+                const textareas = rows[i].getElementsByTagName('textarea');
+                
+                for (let input of inputs) {
+                    input.name = input.name.replace(/-\d+-/, `-${i}-`);
+                    input.id = input.id.replace(/-\d+-/, `-${i}-`);
+                }
+                
+                for (let select of selects) {
+                    select.name = select.name.replace(/-\d+-/, `-${i}-`);
+                    select.id = select.id.replace(/-\d+-/, `-${i}-`);
+                }
+                
+                for (let textarea of textareas) {
+                    textarea.name = textarea.name.replace(/-\d+-/, `-${i}-`);
+                    textarea.id = textarea.id.replace(/-\d+-/, `-${i}-`);
+                }
+            }
+        }
+        
+        // Add new item row
+        addItemBtn.addEventListener('click', function() {
+            const newRow = itemsContainer.querySelector('.item-row').cloneNode(true);
+            const inputs = newRow.getElementsByTagName('input');
+            const selects = newRow.getElementsByTagName('select');
+            const textareas = newRow.getElementsByTagName('textarea');
+            
+            for (let input of inputs) {
+                input.value = '';
+            }
+            
+            for (let select of selects) {
+                select.selectedIndex = 0;
+            }
+            
+            for (let textarea of textareas) {
+                textarea.value = '';
+            }
+            
+            const deleteBtn = newRow.querySelector('.remove-item');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    newRow.remove();
+                    totalForms.value = parseInt(totalForms.value) - 1;
+                    updateFormIndices();
+                });
+            }
+            
+            itemsContainer.appendChild(newRow);
+            totalForms.value = parseInt(totalForms.value) + 1;
+            updateFormIndices();
+        });
+        
+        // Remove item row
+        const removeButtons = document.getElementsByClassName('remove-item');
+        for (let btn of removeButtons) {
+            btn.addEventListener('click', function() {
+                btn.closest('.item-row').remove();
+                totalForms.value = parseInt(totalForms.value) - 1;
+                updateFormIndices();
+            });
+        }
+    });
+</script>
+{% endblock %} 

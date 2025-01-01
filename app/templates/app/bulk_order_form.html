@@ -1,0 +1,483 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Order Template - Order Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bulk-order-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .form-section {
+        background-color: var(--background-color);
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .form-section-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--surface-color);
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .form-section-body {
+        padding: 1.5rem;
+    }
+    
+    .items-table {
+        border-radius: 0.75rem;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+    
+    .items-table thead th {
+        background-color: var(--surface-color);
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border: none;
+    }
+    
+    .items-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .item-row {
+        background-color: var(--background-color);
+        transition: all 0.2s ease;
+    }
+    
+    .item-row:hover {
+        background-color: var(--surface-color);
+    }
+    
+    .template-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        height: 100%;
+    }
+    
+    .template-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .template-card.selected {
+        border-color: var(--primary-color);
+        background-color: var(--primary-light);
+    }
+    
+    .template-stats {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .template-stat {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .floating-actions {
+        position: sticky;
+        bottom: 1rem;
+        background: var(--background-color);
+        padding: 1rem;
+        border-radius: 1rem;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+        margin-top: 2rem;
+        border: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bulk-order-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="fas fa-boxes me-2 text-primary"></i>
+            Bulk Order Creation
+        </h2>
+    </div>
+
+    <form method="post" id="bulkOrderForm">
+        {% csrf_token %}
+        
+        <!-- Order Details Section -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <h3 class="h5 mb-0">Order Details</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            {{ form.customer }}
+                            {{ form.customer.errors }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date</label>
+                            {{ form.order_date }}
+                            {{ form.order_date.errors }}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="{{ form.remarks.id_for_label }}" class="form-label">Remarks</label>
+                            {{ form.remarks }}
+                            {{ form.remarks.errors }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Templates Section -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <h3 class="h5 mb-0">Order Templates</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-4" id="templateContainer">
+                    <!-- Templates will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Section -->
+        <div class="form-section">
+            <div class="form-section-header d-flex justify-content-between align-items-center">
+                <h3 class="h5 mb-0">Order Items</h3>
+                <div>
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" id="importItems">
+                        <i class="fas fa-file-import me-2"></i>Import Items
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" id="addItem">
+                        <i class="fas fa-plus me-2"></i>Add Item
+                    </button>
+                </div>
+            </div>
+            <div class="form-section-body">
+                <div class="table-responsive">
+                    <table class="table items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%">Item Name</th>
+                                <th style="width: 15%">Quantity</th>
+                                <th style="width: 20%">Price</th>
+                                <th style="width: 25%">Remarks</th>
+                                <th style="width: 5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsContainer">
+                            <!-- Items will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+                {{ form.items_data }}
+            </div>
+        </div>
+
+        <div class="floating-actions">
+            <div class="d-flex gap-3 justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">Total: ₹<span id="orderTotal">0.00</span></h4>
+                </div>
+                <div class="d-flex gap-3">
+                    <a href="{% url 'app:order-list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Create Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Item Row Template -->
+<template id="itemRowTemplate">
+    <tr class="item-row">
+        <td>
+            <select class="form-control item-select" name="item" required>
+                <option value="">Select Item</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control item-quantity" name="quantity" step="0.01" min="0" required>
+        </td>
+        <td>
+            <input type="number" class="form-control item-price" name="price" step="0.01" min="0" required>
+        </td>
+        <td>
+            <input type="text" class="form-control item-remarks" name="remarks">
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-link text-danger p-0 remove-item">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+
+<!-- Template Card Template -->
+<template id="templateCardTemplate">
+    <div class="col-md-4">
+        <div class="card template-card" data-template-id="">
+            <div class="card-body">
+                <h5 class="card-title"></h5>
+                <p class="card-text text-muted"></p>
+                <div class="template-stats">
+                    <div class="template-stat">
+                        <i class="fas fa-box"></i>
+                        <span class="items-count"></span>
+                    </div>
+                    <div class="template-stat">
+                        <i class="fas fa-rupee-sign"></i>
+                        <span class="total-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('bulkOrderForm');
+        const itemsContainer = document.getElementById('itemsContainer');
+        const templateContainer = document.getElementById('templateContainer');
+        const addItemBtn = document.getElementById('addItem');
+        const importItemsBtn = document.getElementById('importItems');
+        const itemsDataInput = document.getElementById('id_items_data');
+        const orderTotalSpan = document.getElementById('orderTotal');
+        
+        let availableItems = [];
+        let selectedTemplate = null;
+        
+        /* Load available items */
+        fetch('{% url "app:get-customer-items" 0 %}')
+            .then(response => response.json())
+            .then(data => {
+                availableItems = data.items;
+                updateItemSelects();
+                
+                /* Load initial items if any */
+                {% if initial_items %}
+                const initialItems = {{ initial_items|safe }};
+                initialItems.forEach(item => addItemRow(item));
+                updateTotal();
+                {% endif %}
+            });
+        
+        /* Load templates */
+        fetch('{% url "app:order-templates-api" %}')
+            .then(response => response.json())
+            .then(data => {
+                data.templates.forEach(template => {
+                    const templateCard = document.getElementById('templateCardTemplate')
+                        .content.cloneNode(true).querySelector('.col-md-4');
+                    
+                    const card = templateCard.querySelector('.template-card');
+                    card.dataset.templateId = template.id;
+                    
+                    card.querySelector('.card-title').textContent = template.name;
+                    card.querySelector('.card-text').textContent = template.description || 'No description';
+                    card.querySelector('.items-count').textContent = `${template.items_count} items`;
+                    card.querySelector('.total-value').textContent = `₹${template.total_value.toFixed(2)}`;
+                    
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        selectedTemplate = template;
+                        
+                        /* Clear existing items */
+                        while (itemsContainer.firstChild) {
+                            itemsContainer.firstChild.remove();
+                        }
+                        
+                        /* Add template items */
+                        template.items.forEach(item => {
+                            addItemRow({
+                                item: item.id,
+                                quantity: item.quantity,
+                                price: item.price,
+                                remarks: item.remarks
+                            });
+                        });
+                        
+                        updateTotal();
+                    });
+                    
+                    templateContainer.appendChild(templateCard);
+                });
+            });
+        
+        /* Add new item row */
+        addItemBtn.addEventListener('click', () => addItemRow());
+        
+        /* Import items */
+        importItemsBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv,.xlsx';
+            
+            input.addEventListener('change', () => {
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                fetch('{% url "app:import-items-api" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        data.items.forEach(item => addItemRow(item));
+                        updateTotal();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            });
+            
+            input.click();
+        });
+        
+        /* Form submission */
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const items = [];
+            itemsContainer.querySelectorAll('.item-row').forEach(row => {
+                items.push({
+                    item_id: row.querySelector('.item-select').value,
+                    quantity: parseFloat(row.querySelector('.item-quantity').value),
+                    price: parseFloat(row.querySelector('.item-price').value),
+                    remarks: row.querySelector('.item-remarks').value
+                });
+            });
+            
+            itemsDataInput.value = JSON.stringify(items);
+            
+            const formData = new FormData(form);
+            fetch('{% url "app:bulk-order-create" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+        
+        /* Helper functions */
+        function addItemRow(initialData = null) {
+            const row = document.getElementById('itemRowTemplate')
+                .content.cloneNode(true).querySelector('.item-row');
+            
+            const select = row.querySelector('.item-select');
+            const quantity = row.querySelector('.item-quantity');
+            const price = row.querySelector('.item-price');
+            const remarks = row.querySelector('.item-remarks');
+            const removeBtn = row.querySelector('.remove-item');
+            
+            /* Add options to select */
+            availableItems.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                select.appendChild(option);
+            });
+            
+            /* Set initial values if provided */
+            if (initialData) {
+                select.value = initialData.item;
+                quantity.value = initialData.quantity;
+                price.value = initialData.price;
+                remarks.value = initialData.remarks || '';
+            }
+            
+            /* Event listeners */
+            select.addEventListener('change', updateTotal);
+            quantity.addEventListener('input', updateTotal);
+            price.addEventListener('input', updateTotal);
+            removeBtn.addEventListener('click', () => {
+                row.remove();
+                updateTotal();
+            });
+            
+            itemsContainer.appendChild(row);
+            updateTotal();
+        }
+        
+        function updateItemSelects() {
+            document.querySelectorAll('.item-select').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select Item</option>';
+                
+                availableItems.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.name;
+                    select.appendChild(option);
+                });
+                
+                select.value = currentValue;
+            });
+        }
+        
+        function updateTotal() {
+            let total = 0;
+            itemsContainer.querySelectorAll('.item-row').forEach(row => {
+                const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                total += quantity * price;
+            });
+            orderTotalSpan.textContent = total.toFixed(2);
+        }
+        
+        /* Update customer items when customer changes */
+        document.getElementById('id_customer').addEventListener('change', function() {
+            const customerId = this.value;
+            if (customerId) {
+                fetch(`{% url "app:get-customer-items" 0 %}`.replace('0', customerId))
+                    .then(response => response.json())
+                    .then(data => {
+                        availableItems = data.items;
+                        updateItemSelects();
+                    });
+            }
+        });
+    });
+</script>
+{% endblock %} 

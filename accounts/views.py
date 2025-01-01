@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
+from django.contrib.auth import login as auth_login, logout
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -59,7 +59,7 @@ class CompanyRegistrationView(CreateView):
     def post(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        user_form = CompanyAdminRegistrationForm(request.POST)
+        user_form = CompanyAdminRegistrationForm(request.POST, request.FILES)
 
         if form.is_valid() and user_form.is_valid():
             return self.form_valid(form, user_form)
@@ -76,10 +76,7 @@ class CompanyRegistrationView(CreateView):
                 # Create admin user
                 admin = user_form.save(commit=False)
                 admin.user_type = 'COMPANY_ADMIN'
-                admin.save()
-                
-                # Associate company with admin
-                admin.company = company
+                admin.company = company  # Set the company before saving
                 admin.save()
                 
                 messages.success(

@@ -1,45 +1,237 @@
 {% extends 'app/base.html' %}
+{% load static %}
 
 {% block title %}Orders - Order Manager{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Orders</h2>
-    <a href="{% url 'app:order-create' %}" class="btn btn-primary">Create New Order</a>
-</div>
+{% block extra_css %}
+<style>
+    .order-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .order-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .status-pending {
+        background-color: var(--warning-light);
+        color: var(--warning-color);
+    }
+    
+    .status-completed {
+        background-color: var(--success-light);
+        color: var(--success-color);
+    }
+    
+    .dropdown-menu {
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 0.5rem;
+    }
+    
+    .dropdown-item {
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .dropdown-item i {
+        width: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .order-actions {
+            flex-direction: column;
+        }
+        
+        .order-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Order #</th>
-                        <th>Customer</th>
-                        <th>Date</th>
-                        <th>Total Amount</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr>
-                        <td>{{ order.id }}</td>
-                        <td>{{ order.customer.name }}</td>
-                        <td>{{ order.order_date }}</td>
-                        <td>₹{{ order.total_amount|floatformat:2 }}</td>
-                        <td>
-                            <a href="{% url 'app:order-detail' order.pk %}" class="btn btn-sm btn-info">View</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">No orders found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="fas fa-shopping-cart me-2 text-primary"></i>
+            Orders
+        </h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-plus me-2"></i>Create Order
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" href="{% url 'app:order-create' %}">
+                        <i class="fas fa-file-alt"></i>Single Order
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'app:bulk-order-create' %}">
+                        <i class="fas fa-boxes"></i>Bulk Order
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'app:order-template-list' %}">
+                        <i class="fas fa-copy"></i>Use Template
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'app:order-template-create' %}">
+                        <i class="fas fa-save"></i>Save as Template
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="orderSearch" placeholder="Search orders...">
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-primary" id="thisMonth">This Month</button>
+                        <button type="button" class="btn btn-outline-primary" id="lastMonth">Last Month</button>
+                        <button type="button" class="btn btn-outline-primary" id="thisYear">This Year</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.id }}</td>
+                            <td>{{ order.customer.name }}</td>
+                            <td>{{ order.order_date }}</td>
+                            <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                            <td>
+                                {% if order.total_amount > order.customer.outstanding_balance %}
+                                <span class="order-status status-completed">
+                                    <i class="fas fa-check-circle me-1"></i>Completed
+                                </span>
+                                {% else %}
+                                <span class="order-status status-pending">
+                                    <i class="fas fa-clock me-1"></i>Pending
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="order-actions">
+                                    <a href="{% url 'app:order-detail' order.pk %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+                                    <a href="{% url 'app:order-invoice' order.pk %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-file-invoice me-1"></i>Invoice
+                                    </a>
+                                    <a href="{% url 'app:customer-payment-create' order.customer.pk %}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-money-bill-wave me-1"></i>Payment
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                <h5>No Orders Found</h5>
+                                <p class="text-muted mb-4">Create your first order to get started.</p>
+                                <div class="btn-group">
+                                    <a href="{% url 'app:order-create' %}" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Create Order
+                                    </a>
+                                    <a href="{% url 'app:bulk-order-create' %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-boxes me-2"></i>Bulk Order
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Search functionality
+    $('#orderSearch').on('keyup', function() {
+        const value = $(this).val().toLowerCase();
+        $('tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
+    });
+    
+    // Date filter buttons
+    $('#thisMonth').click(function() {
+        const now = new Date();
+        filterByMonth(now.getMonth() + 1, now.getFullYear());
+    });
+    
+    $('#lastMonth').click(function() {
+        const now = new Date();
+        let month = now.getMonth();
+        let year = now.getFullYear();
+        if (month === 0) {
+            month = 12;
+            year--;
+        }
+        filterByMonth(month, year);
+    });
+    
+    $('#thisYear').click(function() {
+        const year = new Date().getFullYear();
+        filterByYear(year);
+    });
+    
+    function filterByMonth(month, year) {
+        $('tbody tr').each(function() {
+            const date = new Date($(this).find('td:nth-child(3)').text());
+            $(this).toggle(
+                date.getMonth() + 1 === month && 
+                date.getFullYear() === year
+            );
+        });
+    }
+    
+    function filterByYear(year) {
+        $('tbody tr').each(function() {
+            const date = new Date($(this).find('td:nth-child(3)').text());
+            $(this).toggle(date.getFullYear() === year);
+        });
+    }
+});
+</script>
 {% endblock %} 
