@@ -340,7 +340,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         formset = context['items']
         
         form.instance.company = self.request.user.company
-        form.instance.agent = self.request.user.agent_profile
+        form.instance.agent = self.request.user
         
         try:
             with transaction.atomic():
@@ -399,7 +399,7 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         """Set the company and agent before saving."""
         form.instance.company = self.request.user.company
-        form.instance.agent = self.request.user.agent_profile
+        form.instance.agent = self.request.user
         response = super().form_valid(form)
         messages.success(self.request, 'Payment recorded successfully')
         return response
@@ -693,6 +693,34 @@ def import_items_api(request):
                 continue
         
         return JsonResponse(items, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required
+def create_item(request):
+    """API endpoint for creating items."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+    
+    try:
+        # Create the item
+        item = Item.objects.create(
+            company=request.user.company,
+            name=request.POST['name'],
+            unit=request.POST['unit'],
+            default_price=request.POST['default_price'],
+            description=request.POST.get('description', ''),
+            is_active=True
+        )
+        
+        # Return the item data
+        return JsonResponse({
+            'id': item.id,
+            'name': item.name,
+            'unit': item.unit,
+            'default_price': float(item.default_price)
+        })
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)

@@ -86,15 +86,15 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-    }
-    
-    .floating-actions {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .floating-actions {
         position: sticky;
         bottom: 1rem;
         background: var(--background-color);
-        padding: 1rem;
+            padding: 1rem;
         border-radius: 1rem;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
         margin-top: 2rem;
@@ -316,15 +316,15 @@
                         
                         /* Add template items */
                         template.items.forEach(item => {
-                            addItemRow({
+            addItemRow({
                                 item: item.id,
                                 quantity: item.quantity,
                                 price: item.price,
                                 remarks: item.remarks
-                            });
-                        });
-                        
-                        updateTotal();
+            });
+        });
+        
+        updateTotal();
                     });
                     
                     templateContainer.appendChild(templateCard);
@@ -437,9 +437,9 @@
             });
             
             itemsContainer.appendChild(row);
-            updateTotal();
-        }
-        
+        updateTotal();
+    }
+    
         function updateItemSelects() {
             document.querySelectorAll('.item-select').forEach(select => {
                 const currentValue = select.value;
@@ -478,6 +478,6 @@
                     });
             }
         });
-    });
+});
 </script>
 {% endblock %} 

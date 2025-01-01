@@ -57,58 +57,70 @@
     .store-header {
         text-align: center;
         margin-bottom: 3mm;
+        padding-bottom: 2mm;
+        border-bottom: 1px solid #000;
+    }
+
+    .company-logo {
+        margin-bottom: 2mm;
+    }
+
+    .company-logo img {
+        max-width: 60mm;
+        max-height: 20mm;
+        object-fit: contain;
     }
 
     .store-header h2 {
         font-size: 12pt;
         font-weight: bold;
-        margin: 0 0 2mm 0;
-        font-family: 'Courier New', monospace;
+        margin: 0 0 1mm 0;
     }
 
     .store-header p {
-        margin: 0.5mm 0;
         font-size: 9pt;
+        margin: 0.5mm 0;
     }
 
     /* Receipt Title */
     .receipt-title {
         text-align: center;
-        font-size: 10pt;
+        font-size: 11pt;
         font-weight: bold;
-        padding: 2mm 0;
         margin: 2mm 0;
-        border-top: 1px dashed #000;
-        border-bottom: 1px dashed #000;
+        padding: 1mm 0;
+        border-bottom: 1px solid #000;
     }
 
     /* Amount Display */
     .amount-display {
         text-align: center;
-        font-size: 12pt;
+        font-size: 14pt;
         font-weight: bold;
-        margin: 2mm 0;
-        padding: 1mm;
-        border: 1px solid #000;
+        margin: 3mm 0;
+        padding: 2mm;
+        border: 2px solid #000;
+        border-radius: 1mm;
     }
 
-    /* Details Section */
+    /* Detail Sections */
     .detail-section {
         margin: 2mm 0;
+        font-size: 9pt;
     }
 
     .detail-row {
         display: flex;
         justify-content: space-between;
         margin: 1mm 0;
-        font-size: 9pt;
     }
 
     .detail-label {
-        min-width: 20mm;
+        font-weight: bold;
+        min-width: 25mm;
     }
 
-    /* Dotted Lines */
+    /* Dotted Line */
     .dotted-line {
         border-top: 1px dotted #000;
         margin: 2mm 0;
@@ -175,6 +187,7 @@
 
     .footer-message {
         margin: 2mm 0;
+        font-weight: bold;
     }
 
     .footer-contact {
@@ -185,10 +198,11 @@
     .footer-legal {
         margin-top: 2mm;
         font-size: 8pt;
-        color: #000;
+        color: #666;
+        font-style: italic;
     }
 
-    /* Additional Styling for Thermal Receipt Look */
+    /* Additional Styling */
     .detail-label::after {
         content: ":";
     }
@@ -197,9 +211,36 @@
         text-align: right;
     }
 
-    /* Dashed line separator */
-    .separator {
-        border-top: 1px dashed #000;
-        margin: 2mm 0;
+    /* Preview Mode Styles */
+    @media screen {
+        .receipt-container {
+            padding: 5mm;
+            margin: 10mm auto;
+            box-shadow: 0 0 10mm rgba(0,0,0,0.1);
+            border-radius: 2mm;
+        }
+
+        .no-print {
+            margin-bottom: 5mm;
+            text-align: center;
+        }
+
+        .no-print button,
+        .no-print a {
+            margin: 0 2mm;
+            padding: 2mm 4mm;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 1mm;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 10pt;
+        }
+
+        .no-print button:hover,
+        .no-print a:hover {
+            background: #0056b3;
+        }
     }
 } 

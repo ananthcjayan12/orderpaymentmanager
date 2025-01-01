@@ -19,11 +19,20 @@
         <div class="receipt">
             <!-- Store Header -->
             <div class="store-header">
-                <h2>SHARMA ENTERPRISES</h2>
-                <p>123, Main Market Road</p>
-                <p>New Delhi, 110001</p>
-                <p>Tel: +91-9876543210</p>
-                <p>GSTIN: 07AABCS1234Z1ZX</p>
+                {% if customer.company.logo %}
+                <div class="company-logo">
+                    <img src="{{ customer.company.logo.url }}" alt="{{ customer.company.name }} Logo">
+                </div>
+                {% endif %}
+                <h2>{{ customer.company.name|upper }}</h2>
+                <p>{{ customer.company.address }}</p>
+                <p>Tel: {{ customer.company.phone }}</p>
+                {% if customer.company.email %}
+                <p>Email: {{ customer.company.email }}</p>
+                {% endif %}
+                {% if customer.company.gstin %}
+                <p>GSTIN: {{ customer.company.gstin }}</p>
+                {% endif %}
             </div>
 
             <div class="receipt-title">
@@ -78,8 +87,8 @@
                 
                 <div class="footer-contact">
                     For any queries, please contact:<br>
-                    Tel: +91-9876543210<br>
-                    Email: info@sharma.com
+                    Tel: {{ customer.company.phone }}<br>
+                    {% if customer.company.email %}Email: {{ customer.company.email }}{% endif %}
                 </div>
 
                 <div class="footer-legal">

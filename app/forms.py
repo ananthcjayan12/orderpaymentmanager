@@ -19,8 +19,9 @@ class OrderForm(forms.ModelForm):
 class OrderItemForm(forms.ModelForm):
     class Meta:
         model = OrderItem
-        fields = ['item_name', 'quantity', 'price', 'remarks']
+        fields = ['item', 'item_name', 'quantity', 'price', 'remarks']
         widgets = {
+            'item': forms.HiddenInput(),
             'item_name': forms.TextInput(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
@@ -36,7 +37,7 @@ OrderItemFormSet = inlineformset_factory(
     min_num=1,
     validate_min=True,
     can_delete=True,
-    fields=['item_name', 'quantity', 'price', 'remarks'],
+    fields=['item', 'item_name', 'quantity', 'price', 'remarks'],
 )
 
 class BulkOrderForm(forms.Form):
