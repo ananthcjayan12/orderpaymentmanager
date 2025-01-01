@@ -20,15 +20,24 @@ class OrderItemForm(forms.ModelForm):
     class Meta:
         model = OrderItem
         fields = ['item_name', 'quantity', 'price', 'remarks']
+        widgets = {
+            'item_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'remarks': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
-# Create the formset
+# Create the formset with more configuration
 OrderItemFormSet = inlineformset_factory(
     Order, 
     OrderItem,
     form=OrderItemForm,
-    extra=1,  # Number of empty forms to display
-    can_delete=True
-) 
+    extra=1,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
+    fields=['item_name', 'quantity', 'price', 'remarks'],
+)
 
 class PaymentForm(forms.ModelForm):
     class Meta:

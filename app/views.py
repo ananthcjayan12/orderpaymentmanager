@@ -71,13 +71,30 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         context = self.get_context_data()
-        items = context['items']
-        with transaction.atomic():
-            self.object = form.save()
-            if items.is_valid():
-                items.instance = self.object
-                items.save()
-        return super().form_valid(form)
+        formset = context['items']
+        
+        try:
+            with transaction.atomic():
+                self.object = form.save()
+                
+                if formset.is_valid():
+                    formset.instance = self.object
+                    formset.save()
+                else:
+                    raise ValueError("Formset validation failed")
+                    
+            messages.success(self.request, 'Order created successfully.')
+            return super().form_valid(form)
+            
+        except Exception as e:
+            messages.error(self.request, f'Error creating order: {str(e)}')
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        context = self.get_context_data()
+        context['form'] = form
+        messages.error(self.request, 'Please correct the errors below.')
+        return self.render_to_response(context)
 
 # Payment Views
 class PaymentListView(LoginRequiredMixin, ListView):

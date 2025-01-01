@@ -3,69 +3,273 @@
 
 {% block title %}{% if form.instance.pk %}Edit{% else %}New{% endif %} Order - Order Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    .order-form-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .form-section {
+        background-color: var(--background-color);
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .form-section-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--surface-color);
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .form-section-body {
+        padding: 1.5rem;
+    }
+    
+    .form-control, .form-select {
+        padding: 0.75rem 1rem;
+        height: auto;
+        border-radius: 0.75rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Item Table Styles */
+    .items-table {
+        border-radius: 0.75rem;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+    
+    .items-table thead th {
+        background-color: var(--surface-color);
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border: none;
+    }
+    
+    .items-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .item-form {
+        background-color: var(--background-color);
+        transition: all 0.2s ease;
+    }
+    
+    .item-form:hover {
+        background-color: var(--surface-color);
+    }
+    
+    .item-form .form-control {
+        margin-bottom: 0;
+    }
+    
+    .add-item-button {
+        width: 100%;
+        padding: 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 0.75rem;
+        background-color: var(--surface-color);
+        color: var(--text-secondary);
+        transition: all 0.2s ease;
+    }
+    
+    .add-item-button:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background-color: var(--primary-light);
+    }
+    
+    .floating-actions {
+        position: sticky;
+        bottom: 1rem;
+        background: var(--background-color);
+        padding: 1rem;
+        border-radius: 1rem;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+        margin-top: 2rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .remove-item {
+        color: var(--danger-color);
+        background-color: var(--danger-light);
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    
+    .remove-item:hover {
+        background-color: var(--danger-color);
+        color: white;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .items-table {
+            border: none;
+            background: none;
+        }
+        
+        .items-table thead {
+            display: none;
+        }
+        
+        .items-table tbody tr {
+            display: block;
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+        
+        .items-table tbody td {
+            display: block;
+            padding: 0.5rem 0;
+            border: none;
+        }
+        
+        .items-table tbody td::before {
+            content: attr(data-label);
+            display: block;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .remove-item {
+            width: 100%;
+            height: 40px;
+            margin-top: 0.5rem;
+        }
+        
+        .floating-actions {
+            padding: 1rem;
+            border-radius: 1rem 1rem 0 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0;
+            z-index: 1000;
+        }
+        
+        .floating-actions .btn {
+            padding: 0.875rem;
+        }
+        
+        body {
+            padding-bottom: 6rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title mb-0">{% if form.instance.pk %}Edit{% else %}New{% endif %} Order</h3>
+<div class="order-form-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="fas fa-shopping-bag me-2 text-primary"></i>
+            {% if form.instance.pk %}Edit{% else %}New{% endif %} Order
+        </h2>
+    </div>
+
+    <form method="post" id="orderForm">
+        {% csrf_token %}
+        
+        <!-- Customer & Date Section -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <h3 class="h5 mb-0">Order Details</h3>
             </div>
-            <div class="card-body">
-                <form method="post" id="orderForm">
-                    {% csrf_token %}
+            <div class="form-section-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            {{ form.customer }}
+                            {{ form.customer.errors }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date</label>
+                            {{ form.order_date }}
+                            {{ form.order_date.errors }}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="{{ form.remarks.id_for_label }}" class="form-label">Remarks</label>
+                            {{ form.remarks }}
+                            {{ form.remarks.errors }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Section -->
+        <div class="form-section">
+            <div class="form-section-header d-flex justify-content-between align-items-center">
+                <h3 class="h5 mb-0">Order Items</h3>
+                <button type="button" class="btn btn-primary btn-sm" id="add_more">
+                    <i class="fas fa-plus me-2"></i>Add Item
+                </button>
+            </div>
+            <div class="form-section-body">
+                <div id="orderItems">
+                    {{ items.management_form }}
+                    {% for hidden in items.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
                     
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
-                                {{ form.customer }}
-                                {{ form.customer.errors }}
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date</label>
-                                {{ form.order_date }}
-                                {{ form.order_date.errors }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.remarks.id_for_label }}" class="form-label">Remarks</label>
-                        {{ form.remarks }}
-                        {{ form.remarks.errors }}
-                    </div>
-
-                    <h4 class="mt-4 mb-3">Order Items</h4>
-                    <div id="orderItems">
-                        {{ items.management_form }}
-                        <table class="table">
+                    <div class="table-responsive">
+                        <table class="table items-table">
                             <thead>
                                 <tr>
-                                    <th>Item Name</th>
-                                    <th>Quantity</th>
-                                    <th>Price</th>
-                                    <th>Remarks</th>
-                                    <th>Remove</th>
+                                    <th style="width: 35%">Item Name</th>
+                                    <th style="width: 15%">Quantity</th>
+                                    <th style="width: 20%">Price</th>
+                                    <th style="width: 25%">Remarks</th>
+                                    <th style="width: 5%"></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="itemsContainer">
                                 {% for item_form in items.forms %}
                                 <tr class="item-form">
-                                    <td>
+                                    <td data-label="Item Name">
+                                        {{ item_form.id }}
                                         {{ item_form.item_name }}
                                         {{ item_form.item_name.errors }}
                                     </td>
-                                    <td>
+                                    <td data-label="Quantity">
                                         {{ item_form.quantity }}
                                         {{ item_form.quantity.errors }}
                                     </td>
-                                    <td>
+                                    <td data-label="Price">
                                         {{ item_form.price }}
                                         {{ item_form.price.errors }}
                                     </td>
-                                    <td>
+                                    <td data-label="Remarks">
                                         {{ item_form.remarks }}
                                         {{ item_form.remarks.errors }}
                                     </td>
@@ -73,7 +277,9 @@
                                         {% if item_form.instance.pk %}
                                             {{ item_form.DELETE }}
                                         {% else %}
-                                            <button type="button" class="btn btn-sm btn-danger remove-form">Remove</button>
+                                            <button type="button" class="remove-item">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -81,43 +287,143 @@
                             </tbody>
                         </table>
                     </div>
-
-                    <button type="button" class="btn btn-info mb-3" id="add_more">Add Another Item</button>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Save Order</button>
-                        <a href="{% url 'app:order-list' %}" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="floating-actions">
+            <div class="d-flex gap-3 justify-content-end">
+                <a href="{% url 'app:order-list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Save Order
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
-        let itemFormCount = {{ items.total_form_count }};
-        
-        $("#add_more").click(function() {
-            let form = $(".item-form:first").clone(true);
-            form.find('input').val('');
-            form.find('input').each(function() {
-                let name = $(this).attr('name').replace('-0-', '-' + itemFormCount + '-');
-                let id = 'id_' + name;
-                $(this).attr({'name': name, 'id': id});
-            });
-            itemFormCount++;
-            $("#id_items-TOTAL_FORMS").val(itemFormCount);
-            $(".item-form:last").after(form);
+$(document).ready(function() {
+    let itemFormCount = parseInt($("#id_items-TOTAL_FORMS").val());
+    const maxForms = 1000;
+    const minForms = 1;
+    
+    // Initialize form elements
+    function initializeFormElements() {
+        $('.form-control, .form-select').each(function() {
+            $(this).addClass('shadow-sm');
         });
+    }
+    
+    function updateFormIndices() {
+        $('.item-form').each(function(index) {
+            $(this).find('input, select, textarea').each(function() {
+                let name = $(this).attr('name');
+                if (name) {
+                    name = name.replace(/-\d+-/, `-${index}-`);
+                    $(this).attr('name', name);
+                    
+                    let id = $(this).attr('id');
+                    if (id) {
+                        id = id.replace(/-\d+-/, `-${index}-`);
+                        $(this).attr('id', id);
+                    }
+                }
+            });
+        });
+    }
 
-        $(".remove-form").click(function() {
-            $(this).closest('tr').remove();
+    $("#add_more").click(function(e) {
+        e.preventDefault();
+        
+        if (itemFormCount >= maxForms) {
+            alert('Maximum number of items reached');
+            return;
+        }
+
+        let newForm = $(".item-form:first").clone(true);
+        newForm.find('input:not([type=hidden]), textarea').val('');
+        newForm.find('input[id*="-id"]').remove();
+        
+        itemFormCount++;
+        $("#id_items-TOTAL_FORMS").val(itemFormCount);
+        
+        $("#itemsContainer").append(newForm);
+        updateFormIndices();
+        initializeFormElements();
+        
+        // Smooth scroll to new form
+        $('html, body').animate({
+            scrollTop: newForm.offset().top - 100
+        }, 300);
+        
+        // Focus on the first input of the new form
+        newForm.find('input:first').focus();
+    });
+
+    $(".remove-item").click(function(e) {
+        e.preventDefault();
+        
+        if (itemFormCount <= minForms) {
+            alert('At least one item is required');
+            return;
+        }
+
+        $(this).closest('tr').fadeOut(200, function() {
+            $(this).remove();
             itemFormCount--;
             $("#id_items-TOTAL_FORMS").val(itemFormCount);
+            updateFormIndices();
         });
     });
+
+    $("#orderForm").on('submit', function(e) {
+        let valid = true;
+        
+        if (itemFormCount < 1) {
+            alert('Please add at least one item to the order');
+            valid = false;
+        }
+
+        $('.item-form').each(function(index) {
+            let itemName = $(this).find('input[name$="-item_name"]').val();
+            let quantity = $(this).find('input[name$="-quantity"]').val();
+            let price = $(this).find('input[name$="-price"]').val();
+
+            if (!itemName || !quantity || !price) {
+                alert('Please fill in all required fields for each item');
+                valid = false;
+                return false;
+            }
+        });
+
+        if (!valid) {
+            e.preventDefault();
+        }
+    });
+    
+    // Calculate total on price/quantity change
+    function calculateTotal() {
+        let total = 0;
+        $('.item-form').each(function() {
+            const quantity = parseFloat($(this).find('input[name$="-quantity"]').val()) || 0;
+            const price = parseFloat($(this).find('input[name$="-price"]').val()) || 0;
+            total += quantity * price;
+        });
+        return total;
+    }
+    
+    $(document).on('input', 'input[name$="-quantity"], input[name$="-price"]', function() {
+        const total = calculateTotal();
+        // You can display the total somewhere if needed
+    });
+    
+    // Initialize form elements on page load
+    initializeFormElements();
+});
 </script>
 {% endblock %} 
