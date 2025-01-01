@@ -205,11 +205,11 @@
                         <i class="fas fa-eye"></i>
                         <span class="d-none d-sm-inline ms-2">Details</span>
                     </a>
-                    <a href="{% url 'app:order-create-for-customer' customer.pk %}" class="btn btn-outline-success">
+                    <a href="{% url 'app:customer-order-create' customer.pk %}" class="btn btn-outline-success">
                         <i class="fas fa-plus"></i>
                         <span class="d-none d-sm-inline ms-2">Order</span>
                     </a>
-                    <a href="{% url 'app:payment-create-for-customer' customer.pk %}" class="btn btn-outline-info">
+                    <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-outline-info">
                         <i class="fas fa-money-bill-wave"></i>
                         <span class="d-none d-sm-inline ms-2">Payment</span>
                     </a>

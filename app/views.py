@@ -2,11 +2,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
-from .models import Customer, Order, OrderItem, Payment, Item, CustomerItemPrice, OrderTemplate
-from django.db.models import Sum, Count
+from .models import Customer, Order, OrderItem, Payment, Item, CustomerItemPrice, OrderTemplate, OrderTemplateItem
+from django.db.models import Sum, Count, F, Q
 from django.contrib import messages
 from django.db import transaction
-from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm
+from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm, OrderTemplateItemFormSet
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
@@ -67,7 +67,7 @@ def home(request):
             # Get agent performance data
             agent_performance = []
             for agent in company.agents.all():
-                agent_collections = payments.filter(agent=agent).aggregate(
+                agent_collections = payments.filter(agent=agent.user).aggregate(
                     total=Sum('amount_received')
                 )['total'] or 0
                 agent_performance.append({
@@ -91,9 +91,9 @@ def home(request):
             })
             
         elif request.user.user_type == 'AGENT':
-            agent = request.user.agent_profile
-            agent_orders = Order.objects.filter(agent=agent)
-            agent_payments = Payment.objects.filter(agent=agent)
+            # Use request.user directly for agent filtering
+            agent_orders = Order.objects.filter(agent=request.user)
+            agent_payments = Payment.objects.filter(agent=request.user)
             
             # Calculate agent's month-over-month growth
             last_month = timezone.now() - timezone.timedelta(days=30)
@@ -128,7 +128,7 @@ def home(request):
                 'agent_payments_count': agent_payments.count(),
                 'orders_growth': orders_growth,
                 'collections_growth': collections_growth,
-                'agent_recent_activities': get_agent_recent_activities(agent)
+                'agent_recent_activities': get_agent_recent_activities(request.user)
             })
     
     return render(request, 'app/home.html', context)
@@ -161,12 +161,12 @@ def get_recent_activities(company, limit=5):
     activities.sort(key=lambda x: x['timestamp'], reverse=True)
     return activities[:limit]
 
-def get_agent_recent_activities(agent, limit=5):
+def get_agent_recent_activities(agent_user, limit=5):
     """Get recent activities for an agent."""
     activities = []
     
     # Get recent orders by the agent with timestamps
-    recent_orders = Order.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    recent_orders = Order.objects.filter(agent=agent_user).order_by('-created_at')[:limit]
     for order in recent_orders:
         activities.append({
             'type': 'order',
@@ -176,7 +176,7 @@ def get_agent_recent_activities(agent, limit=5):
         })
     
     # Get recent payments collected by the agent with timestamps
-    recent_payments = Payment.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    recent_payments = Payment.objects.filter(agent=agent_user).order_by('-created_at')[:limit]
     for payment in recent_payments:
         activities.append({
             'type': 'payment',
@@ -225,10 +225,58 @@ class CustomerCreateView(LoginRequiredMixin, CreateView):
     fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number']
     success_url = reverse_lazy('app:customer-list')
 
+    def dispatch(self, request, *args, **kwargs):
+        """Check if user has a company before proceeding."""
+        if not request.user.company:
+            messages.error(request, "You must be associated with a company to create customers.")
+            return redirect('app:customer-list')
+        
+        # Add debug information
+        print(f"User: {request.user.email}")
+        print(f"User Type: {request.user.user_type}")
+        print(f"Company: {request.user.company}")
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
         """Set the company before saving."""
-        form.instance.company = self.request.user.company
-        return super().form_valid(form)
+        try:
+            with transaction.atomic():
+                # Get the company instance
+                company = self.request.user.company
+                if not company:
+                    raise ValueError("User's company is not set")
+                
+                # Debug information before save
+                print(f"Form data: {form.cleaned_data}")
+                print(f"User company: {company}")
+                print(f"User company ID: {company.id}")
+                
+                # Verify company exists in database
+                from accounts.models import Company
+                try:
+                    company = Company.objects.get(id=company.id)
+                except Company.DoesNotExist:
+                    raise ValueError(f"Company with ID {company.id} does not exist")
+                
+                # Create customer instance
+                customer = form.save(commit=False)
+                customer.company = company
+                
+                # Debug information after company assignment
+                print(f"Customer company: {customer.company}")
+                print(f"Customer company ID: {customer.company.id if customer.company else None}")
+                
+                # Save the customer
+                customer.save()
+                messages.success(self.request, "Customer created successfully.")
+                return redirect(self.success_url)
+                
+        except Exception as e:
+            import traceback
+            print(f"Error details: {str(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
+            messages.error(self.request, f"Error creating customer. Details: {str(e)}")
+            return self.form_invalid(form)
 
 # Order Views
 class OrderListView(LoginRequiredMixin, ListView):

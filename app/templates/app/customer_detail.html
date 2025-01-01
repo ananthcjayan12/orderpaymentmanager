@@ -8,8 +8,8 @@
         <h2>{{ customer.name }}</h2>
     </div>
     <div class="col-md-4 text-end">
-        <a href="{% url 'app:order-create-for-customer' customer.pk %}" class="btn btn-primary">New Order</a>
-        <a href="{% url 'app:payment-create-for-customer' customer.pk %}" class="btn btn-success">Record Payment</a>
+        <a href="{% url 'app:customer-order-create' customer.pk %}" class="btn btn-primary">New Order</a>
+        <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-success">Record Payment</a>
     </div>
 </div>
 

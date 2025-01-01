@@ -559,7 +559,7 @@ $(document).ready(function() {
     
     // Load template
     $('#loadTemplate').click(function() {
-        $.get("{% url 'app:order-templates' %}", function(templates) {
+        $.get("{% url 'app:order-templates-api' %}", function(templates) {
             const list = $('#templateList');
             list.empty();
             
