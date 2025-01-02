@@ -24,14 +24,8 @@ class CustomLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        """Return the appropriate dashboard URL based on user type."""
-        if self.request.user.user_type == 'SUPER_ADMIN':
-            return reverse_lazy('admin:index')
-        elif self.request.user.user_type == 'COMPANY_ADMIN':
-            return reverse_lazy('accounts:company_dashboard')
-        elif self.request.user.user_type == 'AGENT':
-            return reverse_lazy('accounts:agent_dashboard')
-        return reverse_lazy('accounts:login')
+        """Return the main dashboard URL."""
+        return reverse_lazy('app:home')
 
     def form_valid(self, form):
         """Handle successful login."""

@@ -1,581 +1,289 @@
-{% extends 'base.html' %}
+{% extends 'app/base.html' %}
 {% load static %}
 
-{% block title %}Home - Order Payment Manager{% endblock %}
+{% block title %}Dashboard - Order Manager{% endblock %}
 
-{% block extra_css %}
-<style>
-    .feature-card {
-        transition: transform 0.3s ease;
-        height: 100%;
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .feature-icon {
-        font-size: 2rem;
-        color: var(--primary-color);
-    }
-    
-    .stats-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,.08);
-        transition: transform 0.3s ease;
-        height: 100%;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-    }
-
-    .stats-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .stats-trend {
-        font-size: 0.875rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .trend-up {
-        background-color: var(--success-light);
-        color: var(--success-color);
-    }
-
-    .trend-down {
-        background-color: var(--danger-light);
-        color: var(--danger-color);
-    }
-    
-    .quick-action-btn {
-        width: 100%;
-        margin-bottom: 1rem;
-        padding: 1rem;
-        text-align: left;
-        font-weight: 500;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-    }
-    
-    .quick-action-btn i {
-        margin-right: 0.5rem;
-        font-size: 1.25rem;
-    }
-
-    .quick-action-btn:hover {
-        transform: translateY(-2px);
-    }
-
-    .activity-item {
-        padding: 1rem;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        background-color: var(--surface-color);
-        border: 1px solid var(--border-color);
-        transition: all 0.3s ease;
-    }
-
-    .activity-item:hover {
-        transform: translateX(5px);
-        border-color: var(--primary-color);
-    }
-
-    .activity-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-    }
-
-    .chart-container {
-        height: 300px;
-        margin-top: 1rem;
-    }
-
-    .performance-metrics {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .metric-card {
-        padding: 1rem;
-        border-radius: 12px;
-        background-color: var(--surface-color);
-        border: 1px solid var(--border-color);
-    }
-
-    .metric-title {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-    }
-
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-
-    .task-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .task-item {
-        padding: 0.75rem;
-        border-radius: 8px;
-        background-color: var(--surface-color);
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .task-checkbox {
-        width: 20px;
-        height: 20px;
-    }
-
-    .task-label {
-        flex: 1;
-        font-size: 0.875rem;
-    }
-
-    .task-due {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-    }
-
-    @media (max-width: 768px) {
-        .performance-metrics {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container">
-    {% if user.is_authenticated %}
-        {% if user.user_type == 'COMPANY_ADMIN' %}
-            <!-- Company Admin Dashboard -->
-            <div class="row mb-4">
-                <div class="col">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="mb-0">Company Dashboard</h2>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-outline-primary" id="thisMonth">This Month</button>
-                            <button type="button" class="btn btn-outline-primary" id="lastMonth">Last Month</button>
-                            <button type="button" class="btn btn-outline-primary" id="thisYear">This Year</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Key Metrics -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-primary-light text-primary">
-                                        <i class="fas fa-users"></i>
-                                    </div>
-                                    <h5 class="card-title text-primary mb-3">Customers</h5>
-                                    <h3 class="mb-2">{{ customers_count|default:"0" }}</h3>
-                                    <div class="stats-trend trend-up">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>12% vs last month</span>
-                                    </div>
-                                </div>
+{% block main_content %}
+<div class="container-fluid">
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-primary-light text-primary">
+                                <i class="fas fa-users"></i>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-success-light text-success">
-                                        <i class="fas fa-shopping-cart"></i>
-                                    </div>
-                                    <h5 class="card-title text-success mb-3">Orders</h5>
-                                    <h3 class="mb-2">{{ orders_count|default:"0" }}</h3>
-                                    <div class="stats-trend trend-up">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>8% vs last month</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-info-light text-info">
-                                        <i class="fas fa-money-bill-wave"></i>
-                                    </div>
-                                    <h5 class="card-title text-info mb-3">Collections</h5>
-                                    <h3 class="mb-2">₹{{ total_collections|default:"0" }}</h3>
-                                    <div class="stats-trend trend-up">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>15% vs last month</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-warning-light text-warning">
-                                        <i class="fas fa-clock"></i>
-                                    </div>
-                                    <h5 class="card-title text-warning mb-3">Pending</h5>
-                                    <h3 class="mb-2">₹{{ pending_collections|default:"0" }}</h3>
-                                    <div class="stats-trend trend-down">
-                                        <i class="fas fa-arrow-down"></i>
-                                        <span>5% vs last month</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Performance Metrics -->
-                    <div class="row mb-4">
-                        <div class="col-lg-8">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Sales & Collections Trend</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="salesTrendChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Agent Performance</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="agentPerformanceChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Actions and Activity -->
-                    <div class="row">
-                        <div class="col-lg-4">
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Quick Actions</h5>
-                                </div>
-                                <div class="card-body">
-                                    <a href="{% url 'app:customer-create' %}" class="btn btn-primary quick-action-btn">
-                                        <i class="fas fa-user-plus"></i>Add New Customer
-                                    </a>
-                                    <a href="{% url 'app:order-create' %}" class="btn btn-success quick-action-btn">
-                                        <i class="fas fa-plus"></i>Create New Order
-                                    </a>
-                                    <a href="{% url 'app:payment-create' %}" class="btn btn-info quick-action-btn">
-                                        <i class="fas fa-money-bill-plus"></i>Record Payment
-                                    </a>
-                                    <a href="{% url 'reports:daily-sales' %}" class="btn btn-warning quick-action-btn">
-                                        <i class="fas fa-chart-bar"></i>View Reports
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Tasks</h5>
-                                </div>
-                                <div class="card-body">
-                                    <ul class="task-list">
-                                        <li class="task-item">
-                                            <input type="checkbox" class="task-checkbox">
-                                            <span class="task-label">Follow up with defaulters</span>
-                                            <span class="task-due">Today</span>
-                                        </li>
-                                        <li class="task-item">
-                                            <input type="checkbox" class="task-checkbox">
-                                            <span class="task-label">Review agent performance</span>
-                                            <span class="task-due">Tomorrow</span>
-                                        </li>
-                                        <li class="task-item">
-                                            <input type="checkbox" class="task-checkbox">
-                                            <span class="task-label">Generate monthly report</span>
-                                            <span class="task-due">Next Week</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-8">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Recent Activity</h5>
-                                </div>
-                                <div class="card-body">
-                                    {% if recent_activities %}
-                                        {% for activity in recent_activities %}
-                                            <div class="activity-item d-flex align-items-center">
-                                                {% if 'order' in activity|lower %}
-                                                    <div class="activity-icon bg-success-light text-success">
-                                                        <i class="fas fa-shopping-cart"></i>
-                                                    </div>
-                                                {% else %}
-                                                    <div class="activity-icon bg-info-light text-info">
-                                                        <i class="fas fa-money-bill-wave"></i>
-                                                    </div>
-                                                {% endif %}
-                                                <div>
-                                                    <p class="mb-0">{{ activity }}</p>
-                                                    <small class="text-muted">2 hours ago</small>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    {% else %}
-                                        <p class="text-muted mb-0">No recent activities to display.</p>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Total Customers</h6>
+                            <h3 class="mb-0">{{ customers_count }}</h3>
                         </div>
                     </div>
                 </div>
             </div>
-        {% elif user.user_type == 'AGENT' %}
-            <!-- Agent Dashboard -->
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="mb-4">Agent Dashboard</h2>
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-success-light text-success">
-                                        <i class="fas fa-shopping-cart"></i>
-                                    </div>
-                                    <h5 class="card-title text-success mb-3">My Orders</h5>
-                                    <h3 class="mb-2">{{ agent_orders_count|default:"0" }}</h3>
-                                    <div class="stats-trend trend-up">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>5% vs last month</span>
-                                    </div>
-                                </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-success-light text-success">
+                                <i class="fas fa-shopping-cart"></i>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="stats-card">
-                                <div class="card-body">
-                                    <div class="stats-icon bg-info-light text-info">
-                                        <i class="fas fa-money-bill-wave"></i>
-                                    </div>
-                                    <h5 class="card-title text-info mb-3">My Collections</h5>
-                                    <h3 class="mb-2">{{ agent_payments_count|default:"0" }}</h3>
-                                    <div class="stats-trend trend-up">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>10% vs last month</span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Total Orders</h6>
+                            <h3 class="mb-0">{{ orders_count }}</h3>
+                            <small class="text-muted">
+                                {% if orders_growth > 0 %}
+                                <i class="fas fa-arrow-up text-success"></i>
+                                {% else %}
+                                <i class="fas fa-arrow-down text-danger"></i>
+                                {% endif %}
+                                {{ orders_growth|floatformat:1 }}% from last month
+                            </small>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Quick Actions for Agent -->
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">Quick Actions</h5>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-info-light text-info">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <a href="{% url 'app:order-create' %}" class="btn btn-success quick-action-btn">
-                                <i class="fas fa-plus"></i>Create New Order
-                            </a>
-                            <a href="{% url 'app:payment-create' %}" class="btn btn-info quick-action-btn">
-                                <i class="fas fa-money-bill-plus"></i>Record Payment
-                            </a>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Total Collections</h6>
+                            <h3 class="mb-0">₹{{ total_collections|floatformat:2 }}</h3>
+                            <small class="text-muted">
+                                {% if collections_growth > 0 %}
+                                <i class="fas fa-arrow-up text-success"></i>
+                                {% else %}
+                                <i class="fas fa-arrow-down text-danger"></i>
+                                {% endif %}
+                                {{ collections_growth|floatformat:1 }}% from last month
+                            </small>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">Recent Activity</h5>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-warning-light text-warning">
+                                <i class="fas fa-clock"></i>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            {% if agent_recent_activities %}
-                                {% for activity in agent_recent_activities %}
-                                    <div class="activity-item d-flex align-items-center">
-                                        {% if 'order' in activity|lower %}
-                                            <div class="activity-icon bg-success-light text-success">
-                                                <i class="fas fa-shopping-cart"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Pending Collections</h6>
+                            <h3 class="mb-0">₹{{ pending_collections|floatformat:2 }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Customer List -->
+        <div class="col-xl-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Customers</h5>
+                    <a href="{% url 'app:customer-create' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-2"></i>Add Customer
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Outstanding</th>
+                                    <th>Last Order</th>
+                                    <th>Last Payment</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for customer in recent_customers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary-light text-primary rounded me-3">
+                                                {{ customer.name|slice:":1"|upper }}
                                             </div>
-                                        {% else %}
-                                            <div class="activity-icon bg-info-light text-info">
-                                                <i class="fas fa-money-bill-wave"></i>
+                                            <div>
+                                                <h6 class="mb-0">{{ customer.name }}</h6>
+                                                <small class="text-muted">{{ customer.mobile1 }}</small>
                                             </div>
-                                        {% endif %}
-                                        <div>
-                                            <p class="mb-0">{{ activity }}</p>
-                                            <small class="text-muted">2 hours ago</small>
                                         </div>
-                                    </div>
+                                    </td>
+                                    <td>
+                                        <span class="{% if customer.outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                            ₹{{ customer.outstanding_balance|floatformat:2 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if customer.last_order_date %}
+                                        {{ customer.last_order_date|date:"d M Y" }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if customer.last_payment_date %}
+                                        {{ customer.last_payment_date|date:"d M Y" }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'app:customer-order-create' customer.id %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-plus"></i>
+                                                <span class="d-none d-md-inline ms-1">Order</span>
+                                            </a>
+                                            <a href="{% url 'app:customer-payment-create' customer.id %}" 
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-money-bill"></i>
+                                                <span class="d-none d-md-inline ms-1">Payment</span>
+                                            </a>
+                                            <a href="{% url 'app:customer-detail' customer.id %}" 
+                                               class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-eye"></i>
+                                                <span class="d-none d-md-inline ms-1">Details</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                            {% else %}
-                                <p class="text-muted mb-0">No recent activities to display.</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-    {% else %}
-        <!-- Landing Page for Unauthenticated Users -->
-        <div class="row align-items-center mb-5">
-            <div class="col-lg-6">
-                <h1 class="display-4 mb-4">Welcome to Order Payment Manager</h1>
-                <p class="lead mb-4">Streamline your business operations with our comprehensive order and payment management system.</p>
-                <div class="d-grid gap-2 d-md-flex">
-                    <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg me-md-2">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
-                    </a>
-                    <a href="{% url 'accounts:register_company' %}" class="btn btn-outline-primary btn-lg">
-                        <i class="fas fa-user-plus me-2"></i>Register Your Company
-                    </a>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <img src="{% static 'images/hero-image.png' %}" alt="Hero Image" class="img-fluid" onerror="this.style.display='none'">
-            </div>
-        </div>
-        
-        <!-- Features Section -->
-        <div class="row g-4 mb-5">
-            <div class="col-12">
-                <h2 class="text-center mb-4">Key Features</h2>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-tasks"></i>
-                        </div>
-                        <h5 class="card-title">Order Management</h5>
-                        <p class="card-text">Efficiently manage and track all your orders in one place.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-money-bill-wave"></i>
-                        </div>
-                        <h5 class="card-title">Payment Tracking</h5>
-                        <p class="card-text">Keep track of payments and generate instant receipts.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h5 class="card-title">Reports & Analytics</h5>
-                        <p class="card-text">Get insights into your business with detailed reports.</p>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
-    {% endif %}
+
+        <!-- Activity Feed -->
+        <div class="col-xl-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activities</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-feed">
+                        {% for activity in recent_activities %}
+                        <div class="activity-item">
+                            <div class="activity-content">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="avatar-sm bg-{{ activity.type }}-light text-{{ activity.type }} rounded me-3">
+                                        <i class="fas fa-{% if activity.type == 'order' %}shopping-cart{% else %}money-bill-wave{% endif %}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="mb-0">{{ activity.message }}</p>
+                                        <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                                    </div>
+                                </div>
+                                <div class="ms-5 ps-2">
+                                    <a href="{{ activity.url }}" class="btn btn-sm btn-link px-0">
+                                        View Details
+                                        <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if user.user_type == 'COMPANY_ADMIN' and agent_performance %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Agent Performance</h5>
+                </div>
+                <div class="card-body">
+                    {% for agent in agent_performance %}
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm bg-primary-light text-primary rounded me-3">
+                            {{ agent.name|slice:":1"|upper }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">{{ agent.name }}</h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">{{ agent.orders_count }} orders</small>
+                                <span class="text-success">₹{{ agent.collections|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-$(document).ready(function() {
-    if (document.getElementById('salesTrendChart')) {
-        const salesTrendCtx = document.getElementById('salesTrendChart').getContext('2d');
-        new Chart(salesTrendCtx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                datasets: [{
-                    label: 'Sales',
-                    data: [65, 59, 80, 81, 56, 55],
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                }, {
-                    label: 'Collections',
-                    data: [28, 48, 40, 19, 86, 27],
-                    borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
-            }
-        });
-    }
+<style>
+.avatar {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 24px;
+}
 
-    if (document.getElementById('agentPerformanceChart')) {
-        const agentPerformanceCtx = document.getElementById('agentPerformanceChart').getContext('2d');
-        new Chart(agentPerformanceCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Agent 1', 'Agent 2', 'Agent 3'],
-                datasets: [{
-                    data: [300, 50, 100],
-                    backgroundColor: [
-                        'rgb(255, 99, 132)',
-                        'rgb(54, 162, 235)',
-                        'rgb(255, 205, 86)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
-            }
-        });
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    border-radius: 8px;
+}
+
+.bg-primary-light { background-color: var(--primary-light); }
+.bg-success-light { background-color: var(--success-light); }
+.bg-info-light { background-color: var(--info-light); }
+.bg-warning-light { background-color: var(--warning-light); }
+.bg-danger-light { background-color: var(--danger-light); }
+
+.activity-feed {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.btn-group {
+    gap: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
     }
-});
-</script>
+}
+</style>
 {% endblock %} 

@@ -1,9 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from .models import Customer, Order, OrderItem, Payment, Item, CustomerItemPrice, OrderTemplate, OrderTemplateItem
-from django.db.models import Sum, Count, F, Q
+from django.db.models import Sum, Count, F, Q, Max
 from django.contrib import messages
 from django.db import transaction
 from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm, OrderTemplateItemFormSet
@@ -16,120 +16,137 @@ import pandas as pd
 
 @login_required
 def home(request):
-    """Home page view."""
+    """Home page view serving as the main dashboard."""
+    company = request.user.company
     context = {
-        'user': request.user
+        'user': request.user,
+        'company': company
     }
     
-    if request.user.is_authenticated:
-        if request.user.user_type == 'COMPANY_ADMIN':
-            # Get base counts
-            company = request.user.company
-            customers = Customer.objects.filter(company=company)
-            orders = Order.objects.filter(company=company)
-            payments = Payment.objects.filter(company=company)
-            
-            # Calculate totals
-            total_collections = payments.aggregate(total=Sum('amount_received'))['total'] or 0
-            total_orders = orders.aggregate(total=Sum(
-                F('orderitems__quantity') * F('orderitems__price')
-            ))['total'] or 0
-            pending_collections = total_orders - total_collections
-            
-            # Get month-over-month growth
-            last_month = timezone.now() - timezone.timedelta(days=30)
-            previous_month = last_month - timezone.timedelta(days=30)
-            
-            current_month_orders = orders.filter(created_at__gte=last_month).count()
-            previous_month_orders = orders.filter(
-                created_at__gte=previous_month,
-                created_at__lt=last_month
-            ).count()
-            
-            current_month_collections = payments.filter(created_at__gte=last_month).aggregate(
+    # Get base counts and data
+    customers = Customer.objects.filter(company=company)
+    orders = Order.objects.filter(company=company)
+    payments = Payment.objects.filter(company=company)
+    
+    # Calculate totals
+    total_collections = payments.aggregate(total=Sum('amount_received'))['total'] or 0
+    total_orders = orders.aggregate(total=Sum(
+        F('orderitems__quantity') * F('orderitems__price')
+    ))['total'] or 0
+    pending_collections = total_orders - total_collections
+    
+    # Get month-over-month growth
+    last_month = timezone.now() - timezone.timedelta(days=30)
+    previous_month = last_month - timezone.timedelta(days=30)
+    
+    current_month_orders = orders.filter(created_at__gte=last_month).count()
+    previous_month_orders = orders.filter(
+        created_at__gte=previous_month,
+        created_at__lt=last_month
+    ).count()
+    
+    current_month_collections = payments.filter(created_at__gte=last_month).aggregate(
+        total=Sum('amount_received')
+    )['total'] or 0
+    previous_month_collections = payments.filter(
+        created_at__gte=previous_month,
+        created_at__lt=last_month
+    ).aggregate(total=Sum('amount_received'))['total'] or 0
+    
+    # Calculate growth percentages
+    orders_growth = (
+        ((current_month_orders - previous_month_orders) / previous_month_orders * 100)
+        if previous_month_orders > 0 else 0
+    )
+    collections_growth = (
+        ((current_month_collections - previous_month_collections) / previous_month_collections * 100)
+        if previous_month_collections > 0 else 0
+    )
+    
+    # Get recent customers with their details
+    recent_customers = customers.annotate(
+        total_orders=Count('orders'),
+        total_payments=Sum('payments__amount_received'),
+        last_order_date=Max('orders__created_at'),
+        last_payment_date=Max('payments__created_at')
+    ).order_by('-created_at')[:10]
+    
+    # Get recent activities
+    recent_activities = []
+    
+    # Add recent orders
+    recent_orders = orders.select_related('customer').order_by('-created_at')[:5]
+    for order in recent_orders:
+        recent_activities.append({
+            'type': 'order',
+            'message': f"New order #{order.id} created for {order.customer.name}",
+            'timestamp': order.created_at,
+            'amount': order.total_amount,
+            'url': reverse('app:order-detail', args=[order.id])
+        })
+    
+    # Add recent payments
+    recent_payments = payments.select_related('customer').order_by('-created_at')[:5]
+    for payment in recent_payments:
+        recent_activities.append({
+            'type': 'payment',
+            'message': f"Payment of ₹{payment.amount_received} received from {payment.customer.name}",
+            'timestamp': payment.created_at,
+            'amount': payment.amount_received,
+            'url': reverse('app:payment-receipt', args=[payment.id])
+        })
+    
+    # Sort activities by timestamp
+    recent_activities.sort(key=lambda x: x['timestamp'], reverse=True)
+    recent_activities = recent_activities[:5]
+    
+    # Add all data to context
+    context.update({
+        'customers_count': customers.count(),
+        'orders_count': orders.count(),
+        'payments_count': payments.count(),
+        'total_collections': total_collections,
+        'pending_collections': pending_collections,
+        'orders_growth': orders_growth,
+        'collections_growth': collections_growth,
+        'recent_customers': recent_customers,
+        'recent_activities': recent_activities,
+        'top_customers': customers.annotate(
+            total_orders_amount=Sum(F('orders__orderitems__quantity') * F('orders__orderitems__price'))
+        ).order_by('-total_orders_amount')[:5]
+    })
+    
+    if request.user.user_type == 'COMPANY_ADMIN':
+        # Add agent performance data for company admins
+        agent_performance = []
+        for agent in company.agents.all():
+            agent_collections = payments.filter(agent=agent.user).aggregate(
                 total=Sum('amount_received')
             )['total'] or 0
-            previous_month_collections = payments.filter(
-                created_at__gte=previous_month,
-                created_at__lt=last_month
-            ).aggregate(total=Sum('amount_received'))['total'] or 0
-            
-            # Calculate growth percentages
-            orders_growth = (
-                ((current_month_orders - previous_month_orders) / previous_month_orders * 100)
-                if previous_month_orders > 0 else 0
-            )
-            collections_growth = (
-                ((current_month_collections - previous_month_collections) / previous_month_collections * 100)
-                if previous_month_collections > 0 else 0
-            )
-            
-            # Get agent performance data
-            agent_performance = []
-            for agent in company.agents.all():
-                agent_collections = payments.filter(agent=agent.user).aggregate(
-                    total=Sum('amount_received')
-                )['total'] or 0
-                agent_performance.append({
-                    'name': agent.user.get_full_name() or agent.user.username,
-                    'collections': agent_collections
-                })
-            
-            # Sort agents by performance
-            agent_performance.sort(key=lambda x: x['collections'], reverse=True)
-            
-            context.update({
-                'customers_count': customers.count(),
-                'orders_count': orders.count(),
-                'payments_count': payments.count(),
-                'total_collections': total_collections,
-                'pending_collections': pending_collections,
-                'orders_growth': orders_growth,
-                'collections_growth': collections_growth,
-                'agent_performance': agent_performance,
-                'recent_activities': get_recent_activities(company)
+            agent_performance.append({
+                'name': agent.user.get_full_name() or agent.user.username,
+                'collections': agent_collections,
+                'orders_count': orders.filter(agent=agent.user).count()
             })
-            
-        elif request.user.user_type == 'AGENT':
-            # Use request.user directly for agent filtering
-            agent_orders = Order.objects.filter(agent=request.user)
-            agent_payments = Payment.objects.filter(agent=request.user)
-            
-            # Calculate agent's month-over-month growth
-            last_month = timezone.now() - timezone.timedelta(days=30)
-            previous_month = last_month - timezone.timedelta(days=30)
-            
-            current_month_orders = agent_orders.filter(created_at__gte=last_month).count()
-            previous_month_orders = agent_orders.filter(
-                created_at__gte=previous_month,
-                created_at__lt=last_month
-            ).count()
-            
-            current_month_collections = agent_payments.filter(created_at__gte=last_month).aggregate(
-                total=Sum('amount_received')
-            )['total'] or 0
-            previous_month_collections = agent_payments.filter(
-                created_at__gte=previous_month,
-                created_at__lt=last_month
+        
+        # Sort agents by performance
+        agent_performance.sort(key=lambda x: x['collections'], reverse=True)
+        context['agent_performance'] = agent_performance
+    
+    elif request.user.user_type == 'AGENT':
+        # Add agent-specific data
+        agent_orders = orders.filter(agent=request.user)
+        agent_payments = payments.filter(agent=request.user)
+        
+        context.update({
+            'agent_orders_count': agent_orders.count(),
+            'agent_payments_count': agent_payments.count(),
+            'agent_collections': agent_payments.aggregate(total=Sum('amount_received'))['total'] or 0,
+            'agent_orders_today': agent_orders.filter(created_at__date=timezone.now().date()).count(),
+            'agent_collections_today': agent_payments.filter(
+                created_at__date=timezone.now().date()
             ).aggregate(total=Sum('amount_received'))['total'] or 0
-            
-            # Calculate growth percentages
-            orders_growth = (
-                ((current_month_orders - previous_month_orders) / previous_month_orders * 100)
-                if previous_month_orders > 0 else 0
-            )
-            collections_growth = (
-                ((current_month_collections - previous_month_collections) / previous_month_collections * 100)
-                if previous_month_collections > 0 else 0
-            )
-            
-            context.update({
-                'agent_orders_count': agent_orders.count(),
-                'agent_payments_count': agent_payments.count(),
-                'orders_growth': orders_growth,
-                'collections_growth': collections_growth,
-                'agent_recent_activities': get_agent_recent_activities(request.user)
-            })
+        })
     
     return render(request, 'app/home.html', context)
 
