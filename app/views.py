@@ -20,130 +20,104 @@ def home(request):
     """Home page view serving as the main dashboard."""
     company = request.user.company
     user_type = request.user.user_type
-    context = {
-        'user': request.user,
-        'company': company
-    }
     
-    # Get base data with proper filtering
+    # Get current and previous month date ranges
+    today = timezone.now()
+    last_month_end = today
+    last_month_start = today - timezone.timedelta(days=30)
+    previous_month_end = last_month_start
+    previous_month_start = previous_month_end - timezone.timedelta(days=30)
+    
+    # Base querysets
     customers = Customer.objects.filter(company=company)
+    orders = Order.objects.filter(company=company)
+    payments = Payment.objects.filter(company=company)
     
     if user_type == 'AGENT':
-        # For agents, only show their own orders and payments
-        orders = Order.objects.filter(company=company, agent=request.user)
-        payments = Payment.objects.filter(company=company, agent=request.user)
-        
-        # Calculate agent-specific totals
-        total_collections = payments.aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        total_orders = orders.aggregate(
-            total=Coalesce(
-                Sum(
-                    ExpressionWrapper(
-                        F('orderitems__quantity') * F('orderitems__price'),
-                        output_field=DecimalField(max_digits=10, decimal_places=2)
-                    )
-                ),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        pending_collections = total_orders - total_collections
-        
-        # Get month-over-month growth for agent
-        last_month = timezone.now() - timezone.timedelta(days=30)
-        previous_month = last_month - timezone.timedelta(days=30)
-        
-        current_month_orders = orders.filter(created_at__gte=last_month).count()
-        previous_month_orders = orders.filter(
-            created_at__gte=previous_month,
-            created_at__lt=last_month
-        ).count()
-        
-        current_month_collections = payments.filter(created_at__gte=last_month).aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        previous_month_collections = payments.filter(
-            created_at__gte=previous_month,
-            created_at__lt=last_month
-        ).aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-    else:
-        # For company admins, show all company data
-        orders = Order.objects.filter(company=company)
-        payments = Payment.objects.filter(company=company)
-        
-        # Calculate company-wide totals using the same pattern as above
-        total_collections = payments.aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        total_orders = orders.aggregate(
-            total=Coalesce(
-                Sum(
-                    ExpressionWrapper(
-                        F('orderitems__quantity') * F('orderitems__price'),
-                        output_field=DecimalField(max_digits=10, decimal_places=2)
-                    )
-                ),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        pending_collections = total_orders - total_collections
-        
-        # Get month-over-month growth for company
-        last_month = timezone.now() - timezone.timedelta(days=30)
-        previous_month = last_month - timezone.timedelta(days=30)
-        
-        current_month_orders = orders.filter(created_at__gte=last_month).count()
-        previous_month_orders = orders.filter(
-            created_at__gte=previous_month,
-            created_at__lt=last_month
-        ).count()
-        
-        current_month_collections = payments.filter(created_at__gte=last_month).aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        previous_month_collections = payments.filter(
-            created_at__gte=previous_month,
-            created_at__lt=last_month
-        ).aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
+        orders = orders.filter(agent=request.user)
+        payments = payments.filter(agent=request.user)
+    
+    # Calculate current month stats
+    current_customers = customers.filter(created_at__range=[last_month_start, last_month_end]).count()
+    previous_customers = customers.filter(created_at__range=[previous_month_start, previous_month_end]).count()
+    
+    current_orders = orders.filter(created_at__range=[last_month_start, last_month_end]).count()
+    previous_orders = orders.filter(created_at__range=[previous_month_start, previous_month_end]).count()
+    
+    current_collections = payments.filter(
+        created_at__range=[last_month_start, last_month_end]
+    ).aggregate(
+        total=Coalesce(
+            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+        )
+    )['total']
+    
+    previous_collections = payments.filter(
+        created_at__range=[previous_month_start, previous_month_end]
+    ).aggregate(
+        total=Coalesce(
+            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+        )
+    )['total']
     
     # Calculate growth percentages
+    customers_growth = (
+        ((current_customers - previous_customers) / previous_customers * 100)
+        if previous_customers > 0 else 
+        (100 if current_customers > 0 else 0)
+    )
+    
     orders_growth = (
-        ((current_month_orders - previous_month_orders) / previous_month_orders * 100)
-        if previous_month_orders > 0 else 0
+        ((current_orders - previous_orders) / previous_orders * 100)
+        if previous_orders > 0 else
+        (100 if current_orders > 0 else 0)
     )
+    
     collections_growth = (
-        ((current_month_collections - previous_month_collections) / previous_month_collections * 100)
-        if previous_month_collections > 0 else 0
+        ((current_collections - previous_collections) / previous_collections * 100)
+        if previous_collections > 0 else
+        (100 if current_collections > 0 else 0)
     )
+    
+    # Calculate totals
+    total_collections = payments.aggregate(
+        total=Coalesce(
+            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+        )
+    )['total']
+    
+    total_orders_amount = orders.aggregate(
+        total=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F('orderitems__quantity') * F('orderitems__price'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            ),
+            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+        )
+    )['total']
+    
+    pending_collections = total_orders_amount - total_collections
+    
+    context = {
+        'user': request.user,
+        'company': company,
+        'customers_count': customers.count(),
+        'orders_count': orders.count(),
+        'payments_count': payments.count(),
+        'total_collections': total_collections,
+        'pending_collections': pending_collections,
+        'customers_growth': customers_growth,
+        'orders_growth': orders_growth,
+        'collections_growth': collections_growth,
+        'current_month_orders': current_orders,
+        'current_month_collections': current_collections,
+        'user_type': user_type
+    }
     
     # Get paginated recent customers with their details
     page = request.GET.get('page', 1)
@@ -220,13 +194,6 @@ def home(request):
     
     # Add all data to context
     context.update({
-        'customers_count': customers.count(),
-        'orders_count': orders.count(),
-        'payments_count': payments.count(),
-        'total_collections': total_collections,
-        'pending_collections': pending_collections,
-        'orders_growth': orders_growth,
-        'collections_growth': collections_growth,
         'recent_customers': recent_customers,
         'recent_activities': recent_activities,
         'search_query': search_query,
@@ -242,15 +209,6 @@ def home(request):
         for agent in agents:
             agent_orders = Order.objects.filter(company=company, agent=agent.user)
             agent_payments = Payment.objects.filter(company=company, agent=agent.user)
-            
-            # Get agent name with proper fallbacks
-            agent_name = None
-            if hasattr(agent, 'full_name') and agent.full_name:
-                agent_name = agent.full_name
-            elif agent.user.get_full_name():
-                agent_name = agent.user.get_full_name()
-            elif agent.user.username:
-                agent_name = agent.user.username
             
             # Calculate total order amount
             total_order_amount = agent_orders.aggregate(
@@ -282,60 +240,16 @@ def home(request):
                 if total_order_amount > 0 else 0
             )
             
-            # Get last 30 days metrics
-            last_month = timezone.now() - timezone.timedelta(days=30)
-            last_month_orders = agent_orders.filter(created_at__gte=last_month)
-            last_month_payments = agent_payments.filter(created_at__gte=last_month)
-            
-            last_month_order_amount = last_month_orders.aggregate(
-                total=Coalesce(
-                    Sum(
-                        ExpressionWrapper(
-                            F('orderitems__quantity') * F('orderitems__price'),
-                            output_field=DecimalField(max_digits=10, decimal_places=2)
-                        )
-                    ),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                )
-            )['total']
-            
-            last_month_collections = last_month_payments.aggregate(
-                total=Coalesce(
-                    Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                )
-            )['total']
-            
             # Get last active timestamp
-            last_order = agent_orders.order_by('-created_at').first()
-            last_payment = agent_payments.order_by('-created_at').first()
-            
-            if last_order and last_payment:
-                last_active = max(last_order.created_at, last_payment.created_at)
-            elif last_order:
-                last_active = last_order.created_at
-            elif last_payment:
-                last_active = last_payment.created_at
-            else:
-                last_active = None
-            
-            # Calculate average order value
-            avg_order_value = (
-                total_order_amount / agent_orders.count()
-                if agent_orders.count() > 0 else 0
-            )
+            last_active = agent_orders.aggregate(last_active=Max('created_at'))['last_active'] or \
+                         agent_payments.aggregate(last_active=Max('created_at'))['last_active']
             
             agent_performance.append({
-                'name': agent_name or "Unnamed Agent",
+                'name': agent.user.get_full_name() or agent.user.username,
                 'total_orders': agent_orders.count(),
-                'total_order_amount': total_order_amount,
                 'total_collections': total_collections,
                 'pending_collections': pending_collections,
                 'collection_percentage': collection_percentage,
-                'last_month_orders': last_month_orders.count(),
-                'last_month_order_amount': last_month_order_amount,
-                'last_month_collections': last_month_collections,
-                'avg_order_value': avg_order_value,
                 'last_active': last_active
             })
         
@@ -425,53 +339,8 @@ class CustomerListView(LoginRequiredMixin, ListView):
     ordering = ['name']
 
     def get_queryset(self):
-        """Filter customers by company and annotate with calculated fields."""
-        queryset = Customer.objects.filter(company=self.request.user.company)
-        
-        # Search functionality
-        search_query = self.request.GET.get('search')
-        if search_query:
-            queryset = queryset.filter(
-                Q(name__icontains=search_query) |
-                Q(mobile1__icontains=search_query) |
-                Q(mobile2__icontains=search_query) |
-                Q(location__icontains=search_query)
-            )
-        
-        # Annotate with calculated fields
-        queryset = queryset.annotate(
-            total_orders=Count('orders'),
-            total_amount=Coalesce(
-                Sum(
-                    ExpressionWrapper(
-                        F('orders__orderitems__quantity') * F('orders__orderitems__price'),
-                        output_field=DecimalField(max_digits=10, decimal_places=2)
-                    )
-                ),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            ),
-            total_payments=Coalesce(
-                Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            ),
-            balance_amount=ExpressionWrapper(
-                Coalesce(
-                    Sum(
-                        ExpressionWrapper(
-                            F('orders__orderitems__quantity') * F('orders__orderitems__price'),
-                            output_field=DecimalField(max_digits=10, decimal_places=2)
-                        )
-                    ),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                ) - Coalesce(
-                    Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                ),
-                output_field=DecimalField(max_digits=10, decimal_places=2)
-            )
-        )
-        
-        return queryset.order_by('name')
+        """Filter customers by company."""
+        return Customer.objects.filter(company=self.request.user.company)
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
     """View for customer details."""
@@ -486,42 +355,8 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         customer = self.get_object()
-        
-        # Get orders and payments
-        orders = customer.orders.all().order_by('-order_date')
-        payments = customer.payments.all().order_by('-payment_date')
-        
-        # Calculate total amount from orders
-        total_amount = orders.aggregate(
-            total=Coalesce(
-                Sum(
-                    ExpressionWrapper(
-                        F('orderitems__quantity') * F('orderitems__price'),
-                        output_field=DecimalField(max_digits=10, decimal_places=2)
-                    )
-                ),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        # Calculate total payments
-        total_payments = payments.aggregate(
-            total=Coalesce(
-                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            )
-        )['total']
-        
-        # Calculate balance
-        balance = total_amount - total_payments
-        
-        context.update({
-            'orders': orders,
-            'payments': payments,
-            'total_amount': total_amount,
-            'total_payments': total_payments,
-            'balance': balance
-        })
+        context['orders'] = customer.orders.all().order_by('-order_date')
+        context['payments'] = customer.payments.all().order_by('-payment_date')
         return context
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):

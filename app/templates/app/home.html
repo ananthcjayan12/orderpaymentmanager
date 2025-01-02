@@ -1,91 +1,104 @@
 {% extends 'app/base.html' %}
-{% load static %}
 
 {% block title %}Dashboard - Order Manager{% endblock %}
 
 {% block main_content %}
-<div class="container-fluid">
-    <!-- Stats Row -->
+<div class="container-fluid py-4">
+    <!-- Stats Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-6 col-xl-3">
-            <div class="card">
+            <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar bg-primary-light text-primary">
-                                <i class="fas fa-users"></i>
+                            <div class="avatar bg-primary-light text-primary rounded-circle p-3">
+                                <i class="fas fa-users fa-lg"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">Total Customers</h6>
-                            <h3 class="mb-0">{{ customers_count }}</h3>
+                            <p class="text-muted text-sm mb-1">Total Customers</p>
+                            <h3 class="mb-2">{{ customers_count }}</h3>
+                            <div class="d-flex align-items-center">
+                                <span class="badge {% if customers_growth > 0 %}bg-success-light text-success{% else %}bg-danger-light text-danger{% endif %} me-2">
+                                    <i class="fas {% if customers_growth > 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} me-1"></i>
+                                    {{ customers_growth|default:0|floatformat:1 }}%
+                                </span>
+                                <small class="text-muted">vs last month</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="col-md-6 col-xl-3">
-            <div class="card">
+            <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar bg-success-light text-success">
-                                <i class="fas fa-shopping-cart"></i>
+                            <div class="avatar bg-success-light text-success rounded-circle p-3">
+                                <i class="fas fa-shopping-cart fa-lg"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">Total Orders</h6>
-                            <h3 class="mb-0">{{ orders_count }}</h3>
-                            <small class="text-muted">
-                                {% if orders_growth > 0 %}
-                                <i class="fas fa-arrow-up text-success"></i>
-                                {% else %}
-                                <i class="fas fa-arrow-down text-danger"></i>
-                                {% endif %}
-                                {{ orders_growth|floatformat:1 }}% from last month
-                            </small>
+                            <p class="text-muted text-sm mb-1">Total Orders</p>
+                            <h3 class="mb-2">{{ orders_count }}</h3>
+                            <div class="d-flex align-items-center">
+                                <span class="badge {% if orders_growth > 0 %}bg-success-light text-success{% else %}bg-danger-light text-danger{% endif %} me-2">
+                                    <i class="fas {% if orders_growth > 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} me-1"></i>
+                                    {{ orders_growth|floatformat:1 }}%
+                                </span>
+                                <small class="text-muted">vs last month</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="col-md-6 col-xl-3">
-            <div class="card">
+            <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar bg-info-light text-info">
-                                <i class="fas fa-money-bill-wave"></i>
+                            <div class="avatar bg-info-light text-info rounded-circle p-3">
+                                <i class="fas fa-money-bill-wave fa-lg"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">Total Collections</h6>
-                            <h3 class="mb-0">₹{{ total_collections|floatformat:2 }}</h3>
-                            <small class="text-muted">
-                                {% if collections_growth > 0 %}
-                                <i class="fas fa-arrow-up text-success"></i>
-                                {% else %}
-                                <i class="fas fa-arrow-down text-danger"></i>
-                                {% endif %}
-                                {{ collections_growth|floatformat:1 }}% from last month
-                            </small>
+                            <p class="text-muted text-sm mb-1">Total Collections</p>
+                            <h3 class="mb-2">₹{{ total_collections|floatformat:2 }}</h3>
+                            <div class="d-flex align-items-center">
+                                <span class="badge {% if collections_growth > 0 %}bg-success-light text-success{% else %}bg-danger-light text-danger{% endif %} me-2">
+                                    <i class="fas {% if collections_growth > 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} me-1"></i>
+                                    {{ collections_growth|floatformat:1 }}%
+                                </span>
+                                <small class="text-muted">vs last month</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="col-md-6 col-xl-3">
-            <div class="card">
+            <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0 me-3">
-                            <div class="avatar bg-warning-light text-warning">
-                                <i class="fas fa-clock"></i>
+                            <div class="avatar bg-warning-light text-warning rounded-circle p-3">
+                                <i class="fas fa-clock fa-lg"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">Pending Collections</h6>
-                            <h3 class="mb-0">₹{{ pending_collections|floatformat:2 }}</h3>
+                            <p class="text-muted text-sm mb-1">Pending Collections</p>
+                            <h3 class="mb-2">₹{{ pending_collections|floatformat:2 }}</h3>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning-light text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Needs Attention
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -93,22 +106,25 @@
         </div>
     </div>
 
-    <div class="row">
-        <!-- Customer List -->
+    <div class="row g-4">
+        <!-- Recent Customers -->
         <div class="col-xl-8">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap">
-                        <h5 class="card-title mb-0">Recent Customers</h5>
-                        <div class="d-flex gap-2 align-items-center">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div class="d-flex align-items-center">
+                            <h5 class="card-title mb-0 me-2">Recent Customers</h5>
+                            <span class="badge bg-primary-light text-primary">{{ recent_customers.paginator.count }} total</span>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
                             <form class="d-flex" method="get">
                                 <div class="input-group">
                                     <input type="text" 
-                                           class="form-control" 
+                                           class="form-control border-end-0" 
                                            placeholder="Search customers..." 
                                            name="search"
                                            value="{{ search_query }}">
-                                    <button class="btn btn-outline-primary" type="submit">
+                                    <button class="btn btn-outline-primary border-start-0" type="submit">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
@@ -119,64 +135,57 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th>
+                                    <th class="border-0">
                                         <a href="?sort={% if sort_by == 'name' %}-{% endif %}name&search={{ search_query }}" 
-                                           class="text-decoration-none text-dark">
+                                           class="text-decoration-none text-dark d-flex align-items-center">
                                             Customer
-                                            {% if sort_by == 'name' %}
-                                            <i class="fas fa-sort-up"></i>
-                                            {% elif sort_by == '-name' %}
-                                            <i class="fas fa-sort-down"></i>
-                                            {% else %}
-                                            <i class="fas fa-sort"></i>
-                                            {% endif %}
+                                            <span class="ms-2">
+                                                {% if sort_by == 'name' %}
+                                                <i class="fas fa-sort-up"></i>
+                                                {% elif sort_by == '-name' %}
+                                                <i class="fas fa-sort-down"></i>
+                                                {% else %}
+                                                <i class="fas fa-sort text-muted"></i>
+                                                {% endif %}
+                                            </span>
                                         </a>
                                     </th>
-                                    <th>
+                                    <th class="border-0">
                                         <a href="?sort={% if sort_by == 'calculated_balance' %}-{% endif %}calculated_balance&search={{ search_query }}"
-                                           class="text-decoration-none text-dark">
+                                           class="text-decoration-none text-dark d-flex align-items-center">
                                             Outstanding
-                                            {% if sort_by == 'calculated_balance' %}
-                                            <i class="fas fa-sort-up"></i>
-                                            {% elif sort_by == '-calculated_balance' %}
-                                            <i class="fas fa-sort-down"></i>
-                                            {% else %}
-                                            <i class="fas fa-sort"></i>
-                                            {% endif %}
+                                            <span class="ms-2">
+                                                {% if sort_by == 'calculated_balance' %}
+                                                <i class="fas fa-sort-up"></i>
+                                                {% elif sort_by == '-calculated_balance' %}
+                                                <i class="fas fa-sort-down"></i>
+                                                {% else %}
+                                                <i class="fas fa-sort text-muted"></i>
+                                                {% endif %}
+                                            </span>
                                         </a>
                                     </th>
-                                    <th>
+                                    <th class="border-0">
                                         <a href="?sort={% if sort_by == 'last_order_date' %}-{% endif %}last_order_date&search={{ search_query }}"
-                                           class="text-decoration-none text-dark">
+                                           class="text-decoration-none text-dark d-flex align-items-center">
                                             Last Order
-                                            {% if sort_by == 'last_order_date' %}
-                                            <i class="fas fa-sort-up"></i>
-                                            {% elif sort_by == '-last_order_date' %}
-                                            <i class="fas fa-sort-down"></i>
-                                            {% else %}
-                                            <i class="fas fa-sort"></i>
-                                            {% endif %}
+                                            <span class="ms-2">
+                                                {% if sort_by == 'last_order_date' %}
+                                                <i class="fas fa-sort-up"></i>
+                                                {% elif sort_by == '-last_order_date' %}
+                                                <i class="fas fa-sort-down"></i>
+                                                {% else %}
+                                                <i class="fas fa-sort text-muted"></i>
+                                                {% endif %}
+                                            </span>
                                         </a>
                                     </th>
-                                    <th>
-                                        <a href="?sort={% if sort_by == 'last_payment_date' %}-{% endif %}last_payment_date&search={{ search_query }}"
-                                           class="text-decoration-none text-dark">
-                                            Last Payment
-                                            {% if sort_by == 'last_payment_date' %}
-                                            <i class="fas fa-sort-up"></i>
-                                            {% elif sort_by == '-last_payment_date' %}
-                                            <i class="fas fa-sort-down"></i>
-                                            {% else %}
-                                            <i class="fas fa-sort"></i>
-                                            {% endif %}
-                                        </a>
-                                    </th>
-                                    <th>Actions</th>
+                                    <th class="border-0">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -184,33 +193,34 @@
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar-sm bg-primary-light text-primary rounded me-3">
+                                            <div class="avatar-sm bg-primary-light text-primary rounded-circle me-3">
                                                 {{ customer.name|slice:":1"|upper }}
                                             </div>
                                             <div>
-                                                <h6 class="mb-0">{{ customer.name }}</h6>
+                                                <h6 class="mb-1">{{ customer.name }}</h6>
                                                 <small class="text-muted">{{ customer.mobile1 }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="{% if customer.calculated_balance > 0 %}text-danger{% else %}text-success{% endif %}">
-                                            ₹{{ customer.calculated_balance|floatformat:2 }}
-                                        </span>
+                                        <div>
+                                            <h6 class="mb-1 {% if customer.calculated_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                ₹{{ customer.calculated_balance|floatformat:2 }}
+                                            </h6>
+                                            <small class="text-muted">
+                                                {{ customer.total_orders }} orders total
+                                            </small>
+                                        </div>
                                     </td>
                                     <td>
-                                        {% if customer.last_order_date %}
-                                        {{ customer.last_order_date|date:"d M Y" }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if customer.last_payment_date %}
-                                        {{ customer.last_payment_date|date:"d M Y" }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
+                                        <div>
+                                            {% if customer.last_order_date %}
+                                            <h6 class="mb-1">{{ customer.last_order_date|date:"d M Y" }}</h6>
+                                            <small class="text-muted">{{ customer.last_order_date|timesince }} ago</small>
+                                            {% else %}
+                                            <span class="text-muted">No orders yet</span>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="btn-group">
@@ -234,10 +244,13 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
+                                    <td colspan="4" class="text-center py-5">
                                         <div class="text-muted">
-                                            <i class="fas fa-search fa-2x mb-3"></i>
-                                            <p>No customers found{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                                            <i class="fas fa-users fa-3x mb-3"></i>
+                                            <p class="mb-0">No customers found{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                                            <a href="{% url 'app:customer-create' %}" class="btn btn-primary mt-3">
+                                                <i class="fas fa-plus me-2"></i>Add New Customer
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -247,7 +260,7 @@
                     </div>
                     
                     {% if recent_customers.paginator.num_pages > 1 %}
-                    <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="d-flex justify-content-between align-items-center p-3 border-top">
                         <div class="text-muted">
                             Showing {{ recent_customers.start_index }} to {{ recent_customers.end_index }} 
                             of {{ recent_customers.paginator.count }} customers
@@ -256,13 +269,8 @@
                             <ul class="pagination mb-0">
                                 {% if recent_customers.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <a class="page-link" href="?page=1{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
                                         <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ recent_customers.previous_page_number }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-left"></i>
                                     </a>
                                 </li>
                                 {% endif %}
@@ -274,7 +282,7 @@
                                 </li>
                                 {% elif num > recent_customers.number|add:'-3' and num < recent_customers.number|add:'3' %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ num }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <a class="page-link" href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -283,12 +291,7 @@
                                 
                                 {% if recent_customers.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ recent_customers.next_page_number }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ recent_customers.paginator.num_pages }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <a class="page-link" href="?page={{ recent_customers.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
                                         <i class="fas fa-angle-double-right"></i>
                                     </a>
                                 </li>
@@ -301,199 +304,78 @@
             </div>
         </div>
 
-        <!-- Activity Feed -->
+        <!-- Right Column -->
         <div class="col-xl-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Recent Activities</h5>
+            <!-- Agent Performance -->
+            {% if user.user_type == 'COMPANY_ADMIN' and agent_performance %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <h5 class="card-title mb-0 me-2">Agent Performance</h5>
+                            <span class="badge bg-info-light text-info">Last 30 days</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="activity-feed">
-                        {% for activity in recent_activities %}
-                        <div class="activity-item">
-                            <div class="activity-content">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="avatar-sm bg-{{ activity.type }}-light text-{{ activity.type }} rounded me-3">
-                                        <i class="fas fa-{% if activity.type == 'order' %}shopping-cart{% else %}money-bill-wave{% endif %}"></i>
-                                    </div>
-                                    <div>
-                                        <p class="mb-0">{{ activity.message }}</p>
-                                        <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
-                                    </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for agent in agent_performance %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="avatar-sm bg-primary-light text-primary rounded-circle me-3">
+                                    {{ agent.name|make_list|first|upper }}
                                 </div>
-                                <div class="ms-5 ps-2">
-                                    <a href="{{ activity.url }}" class="btn btn-sm btn-link px-0">
-                                        View Details
-                                        <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ agent.name }}</h6>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-success-light text-success me-2">
+                                            {{ agent.total_orders }} orders
+                                        </span>
+                                        <span class="text-muted small">
+                                            Last active {{ agent.last_active|timesince }} ago
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-center py-4">
-                            <div class="text-muted">
-                                <i class="fas fa-clock fa-2x mb-3"></i>
-                                <p>No recent activities</p>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h6 class="mb-0">₹{{ agent.total_collections|floatformat:2 }}</h6>
+                                    <small class="text-muted">Total Collections</small>
+                                </div>
+                                <div class="text-end">
+                                    <h6 class="mb-0 {% if agent.pending_collections > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        ₹{{ agent.pending_collections|floatformat:2 }}
+                                    </h6>
+                                    <small class="text-muted">Pending Collections</small>
+                                </div>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar {% if agent.collection_percentage >= 80 %}bg-success{% elif agent.collection_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ agent.collection_percentage }}%"
+                                     aria-valuenow="{{ agent.collection_percentage }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="text-muted">Collection Rate</small>
+                                <small class="{% if agent.collection_percentage >= 80 %}text-success{% elif agent.collection_percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ agent.collection_percentage|floatformat:1 }}%
+                                </small>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
-                    
-                    {% if recent_activities.paginator.num_pages > 1 %}
-                    <div class="d-flex justify-content-center mt-3">
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                {% if recent_activities.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?activities_page=1{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?activities_page={{ recent_activities.previous_page_number }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-                                {% endif %}
-                                
-                                {% for num in recent_activities.paginator.page_range %}
-                                {% if num == recent_activities.number %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                                {% elif num > recent_activities.number|add:'-3' and num < recent_activities.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?activities_page={{ num }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        {{ num }}
-                                    </a>
-                                </li>
-                                {% endif %}
-                                {% endfor %}
-                                
-                                {% if recent_activities.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?activities_page={{ recent_activities.next_page_number }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?activities_page={{ recent_activities.paginator.num_pages }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                                {% endif %}
-                            </ul>
-                        </nav>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Agent Performance Section -->
-            {% if user.user_type == 'COMPANY_ADMIN' and agent_performance %}
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Agent Performance</h5>
-                    <span class="text-muted">Last 30 days</span>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Agent</th>
-                                    <th>Orders</th>
-                                    <th>Collections</th>
-                                    <th>Performance</th>
-                                    <th>Last Active</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for agent in agent_performance %}
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-sm bg-primary-light text-primary rounded me-3">
-                                                {{ agent.name|make_list|first|upper }}
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-0">{{ agent.name }}</h6>
-                                                <small class="text-muted">
-                                                    Avg. Order: ₹{{ agent.avg_order_value|floatformat:2 }}
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <h6 class="mb-0">{{ agent.total_orders }} orders</h6>
-                                            <small class="text-muted">
-                                                ₹{{ agent.total_order_amount|floatformat:2 }} total
-                                            </small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <h6 class="mb-0">₹{{ agent.total_collections|floatformat:2 }}</h6>
-                                            <small class="{% if agent.pending_collections > 0 %}text-danger{% else %}text-success{% endif %}">
-                                                {% if agent.pending_collections > 0 %}
-                                                    ₹{{ agent.pending_collections|floatformat:2 }} pending
-                                                {% else %}
-                                                    All collected
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1 me-2">
-                                                <div class="progress" style="height: 6px;">
-                                                    <div class="progress-bar {% if agent.collection_percentage >= 80 %}bg-success{% elif agent.collection_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                                                         role="progressbar"
-                                                         style="width: {{ agent.collection_percentage }}%"
-                                                         aria-valuenow="{{ agent.collection_percentage }}"
-                                                         aria-valuemin="0"
-                                                         aria-valuemax="100">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <small class="text-muted">{{ agent.collection_percentage|floatformat:1 }}%</small>
-                                        </div>
-                                        <small class="text-muted">
-                                            Last 30d: ₹{{ agent.last_month_collections|floatformat:2 }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            {% if agent.last_active %}
-                                                {{ agent.last_active|timesince }} ago
-                                            {% else %}
-                                                Never active
-                                            {% endif %}
-                                        </div>
-                                        <small class="text-muted">
-                                            {{ agent.last_month_orders }} orders this month
-                                        </small>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
                 {% if agent_performance.has_other_pages %}
-                <div class="card-footer">
+                <div class="card-footer bg-transparent border-0 py-3">
                     <nav>
-                        <ul class="pagination justify-content-center mb-0">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if agent_performance.has_previous %}
                             <li class="page-item">
                                 <a class="page-link" href="?agents_page=1">
                                     <i class="fas fa-angle-double-left"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?agents_page={{ agent_performance.previous_page_number }}">
-                                    <i class="fas fa-angle-left"></i>
                                 </a>
                             </li>
                             {% endif %}
@@ -506,11 +388,6 @@
                             
                             {% if agent_performance.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?agents_page={{ agent_performance.next_page_number }}">
-                                    <i class="fas fa-angle-right"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
                                 <a class="page-link" href="?agents_page={{ agent_performance.paginator.num_pages }}">
                                     <i class="fas fa-angle-double-right"></i>
                                 </a>
@@ -522,57 +399,183 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            <!-- Recent Activities -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Recent Activities</h5>
+                        <span class="badge bg-success-light text-success">Live Updates</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for activity in recent_activities %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-{{ activity.type }}-light text-{{ activity.type }} rounded-circle me-3">
+                                    <i class="fas fa-{% if activity.type == 'order' %}shopping-cart{% else %}money-bill-wave{% endif %}"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-1">{{ activity.message }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                                        <a href="{{ activity.url }}" class="btn btn-sm btn-link text-{{ activity.type }} p-0">
+                                            View Details
+                                            <i class="fas fa-arrow-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-clock fa-3x mb-3"></i>
+                                <p class="mb-0">No recent activities</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if recent_activities.paginator.num_pages > 1 %}
+                <div class="card-footer bg-transparent border-0 py-3">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            {% if recent_activities.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?activities_page=1">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    Page {{ recent_activities.number }} of {{ recent_activities.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if recent_activities.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?activities_page={{ recent_activities.paginator.num_pages }}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+/* Custom styles for better UI */
 .avatar {
-    width: 48px;
-    height: 48px;
+    width: 45px;
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    font-size: 24px;
 }
 
 .avatar-sm {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
-    border-radius: 8px;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.bg-primary-light { background-color: var(--primary-light); }
-.bg-success-light { background-color: var(--success-light); }
-.bg-info-light { background-color: var(--info-light); }
-.bg-warning-light { background-color: var(--warning-light); }
-.bg-danger-light { background-color: var(--danger-light); }
-
-.activity-feed {
-    max-height: 600px;
-    overflow-y: auto;
+.text-sm {
+    font-size: 0.875rem;
 }
 
-.activity-item {
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--border-color);
+/* Custom background colors */
+.bg-primary-light {
+    background-color: rgba(13, 110, 253, 0.1) !important;
 }
 
-.activity-item:last-child {
-    border-bottom: none;
+.bg-success-light {
+    background-color: rgba(25, 135, 84, 0.1) !important;
 }
 
-.btn-group {
-    gap: 0.25rem;
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.1) !important;
 }
 
+.bg-info-light {
+    background-color: rgba(13, 202, 240, 0.1) !important;
+}
+
+.bg-danger-light {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* Custom text colors */
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.text-success {
+    color: #198754 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-info {
+    color: #0dcaf0 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-    .avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
+    .card-header {
+        padding: 1rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        width: 100%;
+    }
+    
+    .d-flex.gap-2 {
+        gap: 0.5rem !important;
+    }
+    
+    .input-group {
+        width: 100%;
+    }
+}
+
+/* Animation for live updates badge */
+.badge.bg-success-light {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+    100% {
+        opacity: 1;
     }
 }
 </style>
