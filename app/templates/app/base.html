@@ -1,371 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Order Manager{% endblock %}</title>
-    
-    <!-- Core CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-light: #eef2ff;
-            --secondary-color: #64748b;
-            --success-color: #22c55e;
-            --success-light: #f0fdf4;
-            --danger-color: #ef4444;
-            --danger-light: #fef2f2;
-            --warning-color: #f59e0b;
-            --warning-light: #fffbeb;
-            --info-color: #3b82f6;
-            --info-light: #eff6ff;
-            --background-color: #ffffff;
-            --surface-color: #f8fafc;
-            --card-background: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-light: #94a3b8;
-            --border-color: #e2e8f0;
-        }
+{% extends 'base.html' %}
+{% load static %}
 
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: var(--surface-color);
-            color: var(--text-primary);
-            min-height: 100vh;
-            padding-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        /* Navbar Styles */
-        .navbar {
-            background-color: var(--background-color);
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            padding: 0.75rem 0;
-        }
-
-        .navbar-brand {
-            font-weight: 600;
-            font-size: 1.25rem;
-            color: var(--primary-color) !important;
-            letter-spacing: -0.025em;
-        }
-
-        .nav-link {
-            color: var(--text-secondary) !important;
-            font-weight: 500;
-            padding: 0.5rem 1rem !important;
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
-            margin: 0 0.25rem;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            color: var(--primary-color) !important;
-            background-color: var(--primary-light);
-        }
-
-        /* Card Styles */
-        .card {
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            background-color: var(--card-background);
-            margin-bottom: 1.5rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-header {
-            background-color: transparent;
-            border-bottom: 1px solid var(--border-color);
-            padding: 1.25rem;
-            font-weight: 600;
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        /* Button Styles */
-        .btn {
-            padding: 0.625rem 1.25rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background-color: var(--primary-color);
-            border: none;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #4338ca;
-            transform: translateY(-1px);
-        }
-
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-outline-primary:hover {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-success {
-            background-color: var(--success-color);
-            border: none;
-        }
-
-        .btn-outline-success {
-            color: var(--success-color);
-            border-color: var(--success-color);
-        }
-
-        .btn-outline-success:hover {
-            background-color: var(--success-light);
-            color: var(--success-color);
-            border-color: var(--success-color);
-        }
-
-        /* Form Styles */
-        .form-control, .form-select {
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border-color);
-            background-color: var(--background-color);
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px var(--primary-light);
-        }
-
-        .form-label {
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-        }
-
-        /* Table Styles */
-        .table {
-            margin-bottom: 0;
-        }
-
-        .table th {
-            font-weight: 600;
-            color: var(--text-secondary);
-            background-color: var(--surface-color);
-            padding: 1rem;
-            white-space: nowrap;
-        }
-
-        .table td {
-            padding: 1rem;
-            vertical-align: middle;
-            color: var(--text-primary);
-        }
-
-        .table-hover tbody tr:hover {
-            background-color: var(--primary-light);
-        }
-
-        /* Alert Styles */
-        .alert {
-            border: none;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid transparent;
-        }
-
-        .alert-success {
-            background-color: var(--success-light);
-            border-left-color: var(--success-color);
-            color: var(--success-color);
-        }
-
-        .alert-danger {
-            background-color: var(--danger-light);
-            border-left-color: var(--danger-color);
-            color: var(--danger-color);
-        }
-
-        .alert-info {
-            background-color: var(--info-light);
-            border-left-color: var(--info-color);
-            color: var(--info-color);
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .navbar {
-                padding: 0.5rem;
-            }
-
-            .container {
-                padding: 1rem;
-            }
-
-            .card {
-                margin-bottom: 1rem;
-            }
-
-            .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-
-            .d-flex {
-                flex-direction: column;
-            }
-
-            .justify-content-between {
-                gap: 1rem;
-            }
-
-            .table-responsive {
-                margin: 0 -1rem;
-                padding: 0 1rem;
-                width: calc(100% + 2rem);
-            }
-        }
-
-        /* Utilities */
-        .text-truncate-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .shadow-sm {
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        }
-
-        .shadow-hover {
-            transition: box-shadow 0.2s ease;
-        }
-
-        .shadow-hover:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-        }
-    </style>
-
-    <!-- Additional CSS -->
-    {% block extra_css %}{% endblock %}
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg sticky-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'app:customer-list' %}">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Order Manager</span>
-            </a>
-            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <i class="fas fa-bars"></i>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'customer-list' %}active{% endif %}" 
+                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+                           href="{% url 'app:home' %}">
+                            <i class="fas fa-home me-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}" 
                            href="{% url 'app:customer-list' %}">
-                           <i class="fas fa-users me-2"></i>Customers
+                            <i class="fas fa-users me-2"></i>
+                            Customers
                         </a>
                     </li>
+                    
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'order-list' %}active{% endif %}" 
+                        <a class="nav-link {% if 'order' in request.resolver_match.url_name and 'template' not in request.resolver_match.url_name %}active{% endif %}" 
                            href="{% url 'app:order-list' %}">
-                           <i class="fas fa-shopping-bag me-2"></i>Orders
+                            <i class="fas fa-shopping-cart me-2"></i>
+                            Orders
                         </a>
                     </li>
+                    
                     <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'payment-list' %}active{% endif %}" 
+                        <a class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}" 
                            href="{% url 'app:payment-list' %}">
-                           <i class="fas fa-money-bill-wave me-2"></i>Payments
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Payments
                         </a>
                     </li>
+                    
                     <li class="nav-item">
-                        <a class="nav-link {% if 'reports' in request.path %}active{% endif %}" 
-                           href="{% url 'reports:daily-sales' %}">
-                           <i class="fas fa-chart-bar me-2"></i>Reports
+                        <a class="nav-link {% if 'template' in request.resolver_match.url_name %}active{% endif %}" 
+                           href="{% url 'app:order-template-list' %}">
+                            <i class="fas fa-copy me-2"></i>
+                            Order Templates
                         </a>
                     </li>
                 </ul>
-            </div>
-        </div>
-    </nav>
 
-    <div class="container py-4">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {% if user.user_type == 'COMPANY_ADMIN' %}
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>Administration</span>
+                </h6>
+                <ul class="nav flex-column mb-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:agent_list' %}">
+                            <i class="fas fa-user-tie me-2"></i>
+                            Manage Agents
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                {% block header %}{% endblock %}
+            </div>
+            
+            {% if messages %}
+            <div class="messages mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            {% endfor %}
-        {% endif %}
-
-        {% block content %}
-        {% endblock %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% block main_content %}{% endblock %}
+        </main>
     </div>
+</div>
+{% endblock %}
 
-    <!-- Core JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize tooltips
-            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+{% block extra_css %}
+<style>
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+        padding: 48px 0 0;
+        box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    }
 
-            // Initialize popovers
-            const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-            const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    .sidebar .nav-link {
+        font-weight: 500;
+        color: #333;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        margin: 0.25rem 0.5rem;
+    }
 
-            // Add touch support for dropdowns on mobile
-            if ('ontouchstart' in document.documentElement) {
-                document.querySelectorAll('.dropdown-toggle').forEach(function(element) {
-                    element.setAttribute('data-bs-toggle', 'dropdown');
-                });
-            }
+    .sidebar .nav-link:hover {
+        background-color: rgba(0, 0, 0, .05);
+    }
 
-            // Add smooth scrolling
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                });
-            });
-        });
-    </script>
+    .sidebar .nav-link.active {
+        color: var(--primary-color);
+        background-color: var(--primary-light);
+    }
 
-    <!-- Additional JavaScript -->
-    {% block extra_js %}{% endblock %}
-</body>
-</html> 
+    .sidebar-heading {
+        font-size: .75rem;
+        text-transform: uppercase;
+    }
+
+    @media (max-width: 767.98px) {
+        .sidebar {
+            top: 5rem;
+        }
+    }
+</style>
+{% endblock %} 

@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem
+from .models import Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Customer
 
 class OrderForm(forms.ModelForm):
     class Meta:
@@ -10,8 +10,10 @@ class OrderForm(forms.ModelForm):
             'order_date': forms.DateInput(attrs={'type': 'date'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, company=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if company:
+            self.fields['customer'].queryset = Customer.objects.filter(company=company)
         if 'initial' in kwargs and 'customer' in kwargs['initial']:
             self.fields['customer'].widget.attrs['readonly'] = True
             self.fields['customer'].disabled = True
@@ -89,9 +91,15 @@ class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
         fields = ['customer', 'amount_received', 'notes']
+        widgets = {
+            'amount_received': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, company=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if company:
+            self.fields['customer'].queryset = Customer.objects.filter(company=company)
         if 'initial' in kwargs and 'customer' in kwargs['initial']:
             self.fields['customer'].widget.attrs['readonly'] = True
             self.fields['customer'].disabled = True 

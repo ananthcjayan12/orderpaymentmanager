@@ -307,6 +307,11 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
     template_name = 'app/order_form.html'
     success_url = reverse_lazy('app:order-list')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['company'] = self.request.user.company
+        return kwargs
+
     def get_initial(self):
         initial = super().get_initial()
         customer_id = self.kwargs.get('customer_id')
@@ -384,6 +389,11 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
     template_name = 'app/payment_form.html'
     success_url = reverse_lazy('app:payment-list')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['company'] = self.request.user.company
+        return kwargs
+
     def get_initial(self):
         initial = super().get_initial()
         customer_id = self.kwargs.get('customer_id')
@@ -409,6 +419,10 @@ class PaymentReceiptView(LoginRequiredMixin, DetailView):
     model = Payment
     template_name = 'app/receipts/payment_receipt.html'
     context_object_name = 'payment'
+
+    def get_queryset(self):
+        """Filter payments by company."""
+        return Payment.objects.filter(company=self.request.user.company)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
