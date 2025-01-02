@@ -4,6 +4,37 @@
 
 {% block main_content %}
 <div class="container-fluid py-4">
+    <!-- Time Frame Filter -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="timeframe" class="form-label">Time Frame</label>
+                    <select name="timeframe" id="timeframe" class="form-select" onchange="toggleDateRange(this.value)">
+                        <option value="all" {% if timeframe == 'all' %}selected{% endif %}>All Time</option>
+                        <option value="daily" {% if timeframe == 'daily' %}selected{% endif %}>Daily</option>
+                        <option value="weekly" {% if timeframe == 'weekly' %}selected{% endif %}>Weekly</option>
+                        <option value="monthly" {% if timeframe == 'monthly' %}selected{% endif %}>Monthly</option>
+                        <option value="custom" {% if timeframe == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-3 custom-date-range" style="display: none;">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3 custom-date-range" style="display: none;">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-2"></i>Apply Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-6 col-xl-3">
@@ -579,4 +610,19 @@
     }
 }
 </style>
+
+<script>
+function toggleDateRange(value) {
+    const dateRangeFields = document.querySelectorAll('.custom-date-range');
+    dateRangeFields.forEach(field => {
+        field.style.display = value === 'custom' ? 'block' : 'none';
+    });
+}
+
+// Initialize date range visibility
+document.addEventListener('DOMContentLoaded', function() {
+    const timeframe = document.getElementById('timeframe').value;
+    toggleDateRange(timeframe);
+});
+</script>
 {% endblock %} 

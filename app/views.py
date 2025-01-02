@@ -21,12 +21,45 @@ def home(request):
     company = request.user.company
     user_type = request.user.user_type
     
-    # Get current and previous month date ranges
+    # Get time frame parameters
+    timeframe = request.GET.get('timeframe', 'monthly')
     today = timezone.now()
-    last_month_end = today
-    last_month_start = today - timezone.timedelta(days=30)
-    previous_month_end = last_month_start
-    previous_month_start = previous_month_end - timezone.timedelta(days=30)
+    
+    # Calculate date range based on timeframe
+    if timeframe == 'daily':
+        start_date = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
+        previous_start = start_date - timezone.timedelta(days=1)
+        previous_end = start_date
+    elif timeframe == 'weekly':
+        start_date = today - timezone.timedelta(days=today.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
+        previous_start = start_date - timezone.timedelta(days=7)
+        previous_end = start_date
+    elif timeframe == 'monthly':
+        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
+        previous_start = (start_date - timezone.timedelta(days=1)).replace(day=1)
+        previous_end = start_date
+    elif timeframe == 'custom':
+        try:
+            start_date = timezone.datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d')
+            end_date = timezone.datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d')
+            date_diff = (end_date - start_date).days
+            previous_start = start_date - timezone.timedelta(days=date_diff)
+            previous_end = start_date
+        except (TypeError, ValueError):
+            # Default to monthly if custom dates are invalid
+            start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = today
+            previous_start = (start_date - timezone.timedelta(days=1)).replace(day=1)
+            previous_end = start_date
+    else:  # all time
+        start_date = None
+        end_date = today
+        previous_start = None
+        previous_end = None
     
     # Base querysets
     customers = Customer.objects.filter(company=company)
@@ -37,30 +70,47 @@ def home(request):
         orders = orders.filter(agent=request.user)
         payments = payments.filter(agent=request.user)
     
-    # Calculate current month stats
-    current_customers = customers.filter(created_at__range=[last_month_start, last_month_end]).count()
-    previous_customers = customers.filter(created_at__range=[previous_month_start, previous_month_end]).count()
-    
-    current_orders = orders.filter(created_at__range=[last_month_start, last_month_end]).count()
-    previous_orders = orders.filter(created_at__range=[previous_month_start, previous_month_end]).count()
-    
-    current_collections = payments.filter(
-        created_at__range=[last_month_start, last_month_end]
-    ).aggregate(
-        total=Coalesce(
-            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-        )
-    )['total']
-    
-    previous_collections = payments.filter(
-        created_at__range=[previous_month_start, previous_month_end]
-    ).aggregate(
-        total=Coalesce(
-            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-        )
-    )['total']
+    # Apply date filters if not "all time"
+    if start_date:
+        current_customers = customers.filter(created_at__range=[start_date, end_date]).count()
+        current_orders = orders.filter(created_at__range=[start_date, end_date]).count()
+        current_collections = payments.filter(
+            created_at__range=[start_date, end_date]
+        ).aggregate(
+            total=Coalesce(
+                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        
+        if previous_start:
+            previous_customers = customers.filter(created_at__range=[previous_start, previous_end]).count()
+            previous_orders = orders.filter(created_at__range=[previous_start, previous_end]).count()
+            previous_collections = payments.filter(
+                created_at__range=[previous_start, previous_end]
+            ).aggregate(
+                total=Coalesce(
+                    Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                )
+            )['total']
+        else:
+            previous_customers = 0
+            previous_orders = 0
+            previous_collections = 0
+    else:
+        # All time stats
+        current_customers = customers.count()
+        current_orders = orders.count()
+        current_collections = payments.aggregate(
+            total=Coalesce(
+                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        previous_customers = 0
+        previous_orders = 0
+        previous_collections = 0
     
     # Calculate growth percentages
     customers_growth = (
@@ -81,25 +131,45 @@ def home(request):
         (100 if current_collections > 0 else 0)
     )
     
-    # Calculate totals
-    total_collections = payments.aggregate(
-        total=Coalesce(
-            Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-        )
-    )['total']
-    
-    total_orders_amount = orders.aggregate(
-        total=Coalesce(
-            Sum(
-                ExpressionWrapper(
-                    F('orderitems__quantity') * F('orderitems__price'),
-                    output_field=DecimalField(max_digits=10, decimal_places=2)
-                )
-            ),
-            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-        )
-    )['total']
+    # Calculate totals for the selected period
+    if start_date:
+        total_collections = payments.filter(created_at__range=[start_date, end_date]).aggregate(
+            total=Coalesce(
+                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        
+        total_orders_amount = orders.filter(created_at__range=[start_date, end_date]).aggregate(
+            total=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('orderitems__quantity') * F('orderitems__price'),
+                        output_field=DecimalField(max_digits=10, decimal_places=2)
+                    )
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+    else:
+        total_collections = payments.aggregate(
+            total=Coalesce(
+                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        
+        total_orders_amount = orders.aggregate(
+            total=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('orderitems__quantity') * F('orderitems__price'),
+                        output_field=DecimalField(max_digits=10, decimal_places=2)
+                    )
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
     
     pending_collections = total_orders_amount - total_collections
     
@@ -116,6 +186,9 @@ def home(request):
         'collections_growth': collections_growth,
         'current_month_orders': current_orders,
         'current_month_collections': current_collections,
+        'timeframe': timeframe,
+        'start_date': start_date,
+        'end_date': end_date,
         'user_type': user_type
     }
     
