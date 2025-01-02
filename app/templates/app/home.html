@@ -97,21 +97,85 @@
         <!-- Customer List -->
         <div class="col-xl-8">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Recent Customers</h5>
-                    <a href="{% url 'app:customer-create' %}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-2"></i>Add Customer
-                    </a>
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="card-title mb-0">Recent Customers</h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <form class="d-flex" method="get">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           placeholder="Search customers..." 
+                                           name="search"
+                                           value="{{ search_query }}">
+                                    <button class="btn btn-outline-primary" type="submit">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            <a href="{% url 'app:customer-create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add Customer
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Customer</th>
-                                    <th>Outstanding</th>
-                                    <th>Last Order</th>
-                                    <th>Last Payment</th>
+                                    <th>
+                                        <a href="?sort={% if sort_by == 'name' %}-{% endif %}name&search={{ search_query }}" 
+                                           class="text-decoration-none text-dark">
+                                            Customer
+                                            {% if sort_by == 'name' %}
+                                            <i class="fas fa-sort-up"></i>
+                                            {% elif sort_by == '-name' %}
+                                            <i class="fas fa-sort-down"></i>
+                                            {% else %}
+                                            <i class="fas fa-sort"></i>
+                                            {% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort={% if sort_by == 'calculated_balance' %}-{% endif %}calculated_balance&search={{ search_query }}"
+                                           class="text-decoration-none text-dark">
+                                            Outstanding
+                                            {% if sort_by == 'calculated_balance' %}
+                                            <i class="fas fa-sort-up"></i>
+                                            {% elif sort_by == '-calculated_balance' %}
+                                            <i class="fas fa-sort-down"></i>
+                                            {% else %}
+                                            <i class="fas fa-sort"></i>
+                                            {% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort={% if sort_by == 'last_order_date' %}-{% endif %}last_order_date&search={{ search_query }}"
+                                           class="text-decoration-none text-dark">
+                                            Last Order
+                                            {% if sort_by == 'last_order_date' %}
+                                            <i class="fas fa-sort-up"></i>
+                                            {% elif sort_by == '-last_order_date' %}
+                                            <i class="fas fa-sort-down"></i>
+                                            {% else %}
+                                            <i class="fas fa-sort"></i>
+                                            {% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort={% if sort_by == 'last_payment_date' %}-{% endif %}last_payment_date&search={{ search_query }}"
+                                           class="text-decoration-none text-dark">
+                                            Last Payment
+                                            {% if sort_by == 'last_payment_date' %}
+                                            <i class="fas fa-sort-up"></i>
+                                            {% elif sort_by == '-last_payment_date' %}
+                                            <i class="fas fa-sort-down"></i>
+                                            {% else %}
+                                            <i class="fas fa-sort"></i>
+                                            {% endif %}
+                                        </a>
+                                    </th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -130,8 +194,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="{% if customer.outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
-                                            ₹{{ customer.outstanding_balance|floatformat:2 }}
+                                        <span class="{% if customer.calculated_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                            ₹{{ customer.calculated_balance|floatformat:2 }}
                                         </span>
                                     </td>
                                     <td>
@@ -168,10 +232,71 @@
                                         </div>
                                     </td>
                                 </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-search fa-2x mb-3"></i>
+                                            <p>No customers found{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                                        </div>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    
+                    {% if recent_customers.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing {{ recent_customers.start_index }} to {{ recent_customers.end_index }} 
+                            of {{ recent_customers.paginator.count }} customers
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                {% if recent_customers.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ recent_customers.previous_page_number }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in recent_customers.paginator.page_range %}
+                                {% if num == recent_customers.number %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > recent_customers.number|add:'-3' and num < recent_customers.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                
+                                {% if recent_customers.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ recent_customers.next_page_number }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ recent_customers.paginator.num_pages }}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -204,31 +329,157 @@
                                 </div>
                             </div>
                         </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-clock fa-2x mb-3"></i>
+                                <p>No recent activities</p>
+                            </div>
+                        </div>
                         {% endfor %}
                     </div>
+                    
+                    {% if recent_activities.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-center mt-3">
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                {% if recent_activities.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?activities_page=1{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?activities_page={{ recent_activities.previous_page_number }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in recent_activities.paginator.page_range %}
+                                {% if num == recent_activities.number %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > recent_activities.number|add:'-3' and num < recent_activities.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?activities_page={{ num }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                
+                                {% if recent_activities.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?activities_page={{ recent_activities.next_page_number }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?activities_page={{ recent_activities.paginator.num_pages }}{% if page %}&page={{ page }}{% endif %}{% if agents_page %}&agents_page={{ agents_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
             {% if user.user_type == 'COMPANY_ADMIN' and agent_performance %}
             <div class="card mt-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Agent Performance</h5>
+                    <small class="text-muted">Last 30 days</small>
                 </div>
                 <div class="card-body">
                     {% for agent in agent_performance %}
                     <div class="d-flex align-items-center mb-3">
                         <div class="avatar-sm bg-primary-light text-primary rounded me-3">
-                            {{ agent.name|slice:":1"|upper }}
+                            {% if agent.name %}
+                                {{ agent.name|slice:":1"|upper }}
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-0">{{ agent.name }}</h6>
                             <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted">{{ agent.orders_count }} orders</small>
-                                <span class="text-success">₹{{ agent.collections|floatformat:2 }}</span>
+                                <div>
+                                    <h6 class="mb-0">{{ agent.name|default:"Unnamed Agent" }}</h6>
+                                    <small class="text-muted">
+                                        {{ agent.orders_count }} order{{ agent.orders_count|pluralize }}
+                                        {% if agent.last_active %}
+                                        · Last active {{ agent.last_active|timesince }} ago
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="text-success fw-bold">₹{{ agent.collections|floatformat:2 }}</span>
+                                    <br>
+                                    <small class="text-muted">Collections</small>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="fas fa-users fa-2x mb-3"></i>
+                            <p>No agents found</p>
+                        </div>
+                    </div>
                     {% endfor %}
+                    
+                    {% if agent_performance.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-center mt-3">
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                {% if agent_performance.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?agents_page=1{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?agents_page={{ agent_performance.previous_page_number }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in agent_performance.paginator.page_range %}
+                                {% if num == agent_performance.number %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > agent_performance.number|add:'-3' and num < agent_performance.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?agents_page={{ num }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                                
+                                {% if agent_performance.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?agents_page={{ agent_performance.next_page_number }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?agents_page={{ agent_performance.paginator.num_pages }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
