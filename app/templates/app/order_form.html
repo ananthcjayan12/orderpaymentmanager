@@ -1,106 +1,77 @@
 {% extends 'app/base.html' %}
-{% load static %}
 
-{% block title %}{% if form.instance.pk %}Edit{% else %}New{% endif %} Order - Order Manager{% endblock %}
+{% block title %}Create Order - Order Manager{% endblock %}
 
 {% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
-    .order-form-container {
-        max-width: 1200px;
-        margin: 0 auto;
+    :root {
+        --surface-color: #fff;
+        --background-color: #f8f9fa;
+        --border-color: #e9ecef;
+        --text-secondary: #6c757d;
     }
-    
+
     .form-section {
-        background-color: var(--background-color);
-        border-radius: 1rem;
-        margin-bottom: 2rem;
+        background: var(--surface-color);
         border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
     }
-    
+
     .form-section-header {
-        padding: 1.25rem;
+        padding: 1rem 1.5rem;
         border-bottom: 1px solid var(--border-color);
-        background-color: var(--surface-color);
-        border-radius: 1rem 1rem 0 0;
     }
-    
+
     .form-section-body {
         padding: 1.5rem;
     }
-    
-    .form-control, .form-select {
-        padding: 0.75rem 1rem;
-        height: auto;
-        border-radius: 0.75rem;
-    }
-    
-    .form-label {
-        font-weight: 500;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Item Table Styles */
+
     .items-table {
-        border-radius: 0.75rem;
-        overflow: hidden;
         border: 1px solid var(--border-color);
-        margin-bottom: 1rem;
+        border-radius: 0.75rem;
+        background: var(--background-color);
     }
-    
-    .items-table thead th {
-        background-color: var(--surface-color);
-        padding: 1rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        border: none;
+
+    .items-table th {
+        background: var(--surface-color);
+        border-bottom: 2px solid var(--border-color);
     }
-    
-    .items-table tbody td {
-        padding: 1rem;
+
+    .items-table th:first-child {
+        border-top-left-radius: 0.75rem;
+    }
+
+    .items-table th:last-child {
+        border-top-right-radius: 0.75rem;
+    }
+
+    .items-table td {
         vertical-align: middle;
-        border-top: 1px solid var(--border-color);
     }
-    
-    .item-row {
-        background-color: var(--background-color);
-        transition: all 0.2s ease;
-    }
-    
-    .item-row:hover {
-        background-color: var(--surface-color);
-    }
-    
+
     .floating-actions {
         position: sticky;
-        bottom: 1rem;
-        background: var(--background-color);
+        bottom: 0;
+        background: var(--surface-color);
         padding: 1rem;
-        border-radius: 1rem;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-        margin-top: 2rem;
-        border: 1px solid var(--border-color);
+        border-top: 1px solid var(--border-color);
+        z-index: 100;
     }
-    
-    .template-modal {
-        max-width: 500px;
-    }
-    
+
     .template-modal .modal-content {
         border-radius: 1rem;
     }
-    
+
     .template-modal .modal-header {
         border-radius: 1rem 1rem 0 0;
         background-color: var(--surface-color);
     }
-    
+
     .template-modal .modal-footer {
         border-radius: 0 0 1rem 1rem;
     }
-    
+
     @media (max-width: 768px) {
         .items-table {
             border: none;
@@ -134,41 +105,19 @@
             font-size: 0.875rem;
             margin-bottom: 0.25rem;
         }
-        
-        .floating-actions {
-            padding: 1rem;
-            border-radius: 1rem 1rem 0 0;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            margin: 0;
-            z-index: 1000;
-        }
-        
-        body {
-            padding-bottom: 6rem;
-        }
     }
 </style>
 {% endblock %}
 
-{% block content %}
-<div class="order-form-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 mb-0">
-            <i class="fas fa-shopping-bag me-2 text-primary"></i>
-            {% if form.instance.pk %}Edit{% else %}New{% endif %} Order
-        </h2>
-    </div>
-
+{% block main_content %}
+<div class="container-fluid">
     <form method="post" id="orderForm">
         {% csrf_token %}
         
         <!-- Customer & Date Section -->
         <div class="form-section">
             <div class="form-section-header">
-                <h3 class="h5 mb-0">Order Details</h3>
+                <h5 class="mb-0">Order Details</h5>
             </div>
             <div class="form-section-body">
                 <div class="row g-4">
@@ -197,90 +146,78 @@
             </div>
         </div>
 
-        <!-- Order Items Section -->
+        <!-- Items Section -->
         <div class="form-section">
-            <div class="form-section-header d-flex justify-content-between align-items-center">
-                <h3 class="h5 mb-0">Order Items</h3>
-                <div>
-                    <button type="button" class="btn btn-outline-primary btn-sm me-2" id="loadTemplate">
-                        <i class="fas fa-copy me-2"></i>Load Template
-                    </button>
-                    <button type="button" class="btn btn-primary btn-sm" id="addItem">
-                        <i class="fas fa-plus me-2"></i>Add Item
-                    </button>
+            <div class="form-section-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Order Items</h5>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary" id="loadTemplate">
+                            <i class="fas fa-file-import me-2"></i>Load Template
+                        </button>
+                        <button type="button" class="btn btn-primary" id="addItem">
+                            <i class="fas fa-plus me-2"></i>Add Item
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="form-section-body">
-                <div id="orderItems">
-                    {{ items.management_form }}
-                    {% for hidden in items.hidden_fields %}
-                        {{ hidden }}
-                    {% endfor %}
-                    
-                    <div class="table-responsive">
-                        <table class="table items-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 35%">Item Name</th>
-                                    <th style="width: 15%">Quantity</th>
-                                    <th style="width: 20%">Price</th>
-                                    <th style="width: 25%">Remarks</th>
-                                    <th style="width: 5%"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="itemsContainer">
-                                {% for item_form in items.forms %}
-                                <tr class="item-row">
-                                    <td data-label="Item Name">
-                                        {{ item_form.id }}
-                                        <div class="item-select-container">
-                                            <select class="form-select item-select" name="item-select-{{ forloop.counter0 }}">
-                                                <option value="">Select Item</option>
-                                                <option value="new">Create New Item</option>
-                                                {% for item in available_items %}
-                                                <option value="{{ item.id }}" 
-                                                    data-price="{{ item.default_price }}"
-                                                    data-unit="{{ item.unit }}">
-                                                    {{ item.name }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                            {{ item_form.item }}
-                                            {{ item_form.item_name }}
-                                        </div>
-                                    </td>
-                                    <td data-label="Quantity">
-                                        <div class="input-group">
-                                            {{ item_form.quantity }}
-                                            <span class="input-group-text item-unit">unit</span>
-                                        </div>
-                                        {{ item_form.quantity.errors }}
-                                    </td>
-                                    <td data-label="Price">
-                                        <div class="input-group">
-                                            <span class="input-group-text">₹</span>
-                                            {{ item_form.price }}
-                                        </div>
-                                        {{ item_form.price.errors }}
-                                    </td>
-                                    <td data-label="Remarks">
-                                        {{ item_form.remarks }}
-                                        {{ item_form.remarks.errors }}
-                                    </td>
-                                    <td>
-                                        {% if item_form.instance.pk %}
-                                            {{ item_form.DELETE }}
-                                        {% else %}
-                                            <button type="button" class="btn btn-danger btn-sm remove-item">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%">Item</th>
+                                <th style="width: 15%">Quantity</th>
+                                <th style="width: 20%">Price</th>
+                                <th style="width: 20%">Total</th>
+                                <th style="width: 10%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsContainer">
+                            {{ items.management_form }}
+                            {% for form in items.forms %}
+                            <tr class="item-row">
+                                <td data-label="Item">
+                                    {{ form.id }}
+                                    {{ form.item }}
+                                    <select class="form-select item-select" name="item-select-{{ forloop.counter0 }}">
+                                        <option value="">Select an item</option>
+                                        {% for item in available_items %}
+                                        <option value="{{ item.id }}" 
+                                                data-price="{{ item.default_price }}"
+                                                data-unit="{{ item.unit }}">
+                                            {{ item.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    {{ form.item_name }}
+                                </td>
+                                <td data-label="Quantity">
+                                    {{ form.quantity }}
+                                </td>
+                                <td data-label="Price">
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        {{ form.price }}
+                                    </div>
+                                </td>
+                                <td data-label="Total">
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="text" class="form-control line-total" readonly>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if forloop.counter > 1 %}
+                                    <button type="button" class="btn btn-outline-danger remove-item">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -392,246 +329,223 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-$(document).ready(function() {
-    let itemFormCount = parseInt($("#id_items-TOTAL_FORMS").val());
-    const maxForms = 1000;
-    const minForms = 1;
-    
-    // Add new item row
-    $("#addItem").click(function(e) {
-        e.preventDefault();
+    $(document).ready(function() {
+        // Initialize form controls
+        $('#id_customer').addClass('form-select');
+        $('#id_order_date').addClass('form-control');
+        $('#id_remarks').addClass('form-control');
         
-        if (itemFormCount >= maxForms) {
-            alert('Maximum number of items reached');
-            return;
+        // Initialize Select2 for all item selects
+        $('.item-select').each(function() {
+            $(this).select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Select an item'
+            });
+        });
+        
+        // Calculate line total
+        function calculateLineTotal(row) {
+            const quantity = parseFloat(row.find('input[name$="-quantity"]').val()) || 0;
+            const price = parseFloat(row.find('input[name$="-price"]').val()) || 0;
+            const total = quantity * price;
+            row.find('.line-total').val(total.toFixed(2));
+            return total;
         }
         
-        // Get the first row and clone it
-        let firstRow = $(".item-row:first");
-        
-        // Destroy select2 on the first row before cloning
-        firstRow.find('.item-select').select2('destroy');
-        
-        // Clone the row
-        let newForm = firstRow.clone();
-        
-        // Reinitialize select2 on the first row
-        initializeSelect2(firstRow.find('.item-select'));
-        
-        // Clean up the new form
-        newForm.find('input').val('');
-        newForm.find('select').val('');
-        newForm.find('input[id*="-id"]').remove();
-        
-        // Update form count
-        itemFormCount++;
-        $("#id_items-TOTAL_FORMS").val(itemFormCount);
-        
-        // Add the new form to the container
-        $("#itemsContainer").append(newForm);
-        
-        // Update indices
-        updateFormIndices();
-        
-        // Initialize select2 on the new row
-        initializeSelect2(newForm.find('.item-select'));
-        
-        // Scroll to the new form
-        $('html, body').animate({
-            scrollTop: newForm.offset().top - 100
-        }, 300);
-    });
-    
-    // Helper function to initialize select2
-    function initializeSelect2(element) {
-        element.select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            placeholder: 'Select an item',
-            escapeMarkup: function(markup) {
-                return markup;
-            },
-            templateResult: function(data) {
-                if (data.id === 'new') {
-                    return $('<span><i class="fas fa-plus me-2"></i>Create New Item</span>');
-                }
-                return data.text;
-            },
-            templateSelection: function(data) {
-                if (data.id === 'new') {
-                    return 'Create New Item';
-                }
-                return data.text;
-            }
-        }).on('select2:select', function(e) {
-            if (e.params.data.id === 'new') {
-                // Reset the select
-                $(this).val('').trigger('change');
-                
-                // Show create item modal
-                $('#createItemModal').modal('show');
-                
-                // Store reference to the select that triggered this
-                $('#createItemModal').data('select', $(this));
-            }
-        });
-    }
-    
-    // Initialize form elements
-    function initializeFormElements() {
-        $('.form-control, .form-select').each(function() {
-            $(this).addClass('shadow-sm');
-        });
-     
-        // Initialize select2 for item selection
-        $('.item-select:not(.select2-hidden-accessible)').each(function() {
-            initializeSelect2($(this));
-        });
-    }
-    
-    // Create new item
-    $('#createItemBtn').click(function() {
-        const name = $('#itemName').val();
-        const unit = $('#itemUnit').val();
-        const defaultPrice = $('#itemDefaultPrice').val();
-        const description = $('#itemDescription').val();
-        
-        if (!name || !unit || !defaultPrice) {
-            alert('Please fill in all required fields');
-            return;
+        // Calculate order total
+        function calculateOrderTotal() {
+            let total = 0;
+            $('.item-row').each(function() {
+                total += calculateLineTotal($(this));
+            });
+            $('#orderTotal').text(total.toFixed(2));
         }
         
-        $.ajax({
-            url: "{% url 'app:item-create' %}",
-            type: 'POST',
-            data: {
-                name: name,
-                unit: unit,
-                default_price: defaultPrice,
-                description: description,
-                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
-            },
-            success: function(response) {
-                // Add new option to all select2 dropdowns
-                const newOption = new Option(response.name, response.id, true, true);
-                $(newOption).data('price', response.default_price);
-                $(newOption).data('unit', response.unit);
-                
-                $('.item-select').each(function() {
-                    // Add the option
-                    if (!$(this).find("option[value='" + response.id + "']").length) {
-                        $(this).append(newOption.cloneNode(true));
-                    }
-                });
-                
-                // Select the new item in the dropdown that triggered the creation
-                const select = $('#createItemModal').data('select');
-                if (select) {
-                    select.val(response.id).trigger('change');
-                }
-                
-                // Clear and close modal
-                $('#createItemModal').modal('hide');
-                $('#createItemForm').trigger('reset');
-                
-                alert('Item created successfully');
-            },
-            error: function(xhr) {
-                alert('Error creating item: ' + xhr.responseText);
-            }
+        // Handle quantity and price changes
+        $(document).on('input', 'input[name$="-quantity"], input[name$="-price"]', function() {
+            calculateOrderTotal();
         });
-    });
-    
-    // Handle item selection
-    $(document).on('change', '.item-select', function() {
-        const row = $(this).closest('.item-row');
-        const selectedOption = $(this).find('option:selected');
-        const itemId = $(this).val();
-        const itemName = selectedOption.text();
-        const price = selectedOption.data('price');
-        const unit = selectedOption.data('unit');
         
-        // Update hidden item field
-        row.find('input[name$="-item"]').val(itemId);
-        
-        // Update item name field
-        row.find('input[name$="-item_name"]').val(itemName);
-        
-        // Update price if empty or if user hasn't modified it
-        const priceInput = row.find('input[name$="-price"]');
-        if (!priceInput.val() || !priceInput.data('user-modified')) {
-            priceInput.val(price);
-        }
-        
-        // Update unit display
-        row.find('.item-unit').text(unit || 'unit');
-        
-        updateTotal();
-    });
-    
-    // Remove item row
-    $(document).on('click', '.remove-item', function() {
-        if (itemFormCount <= minForms) {
-            alert('At least one item is required');
-            return;
-        }
-        
-        $(this).closest('.item-row').remove();
-        itemFormCount--;
-        $("#id_items-TOTAL_FORMS").val(itemFormCount);
-        updateFormIndices();
-        updateTotal();
-    });
-    
-    // Update form indices
-    function updateFormIndices() {
-        $('.item-row').each(function(index) {
-            $(this).find('input, select').each(function() {
-                let name = $(this).attr('name');
+        // Add new item row
+        $('#addItem').on('click', function() {
+            const lastRow = $('.item-row:last');
+            const newRow = lastRow.clone(true);
+            const forms = $('.item-row').length;
+            
+            // Destroy Select2 before cloning
+            lastRow.find('.item-select').select2('destroy');
+            
+            // Update form index
+            newRow.find('select, input').each(function() {
+                const name = $(this).attr('name');
                 if (name) {
-                    name = name.replace(/\d+/, index);
-                    $(this).attr('name', name);
-                }
-                
-                let id = $(this).attr('id');
-                if (id) {
-                    id = id.replace(/\d+/, index);
-                    $(this).attr('id', id);
+                    const newName = name.replace(/\d+/, forms);
+                    $(this).attr('name', newName);
+                    $(this).attr('id', newName);
                 }
             });
             
-            // Update select2 name
-            $(this).find('.item-select').attr('name', 'item-select-' + index);
+            // Clear values
+            newRow.find('select').val('');
+            newRow.find('input[type="text"], input[type="number"]').val('');
+            newRow.find('.line-total').val('0.00');
+            newRow.find('input[name$="-DELETE"]').prop('checked', false);
+            
+            // Add remove button if not present
+            if (!newRow.find('.remove-item').length) {
+                newRow.find('td:last').append(
+                    '<button type="button" class="btn btn-outline-danger remove-item">' +
+                    '<i class="fas fa-trash-alt"></i></button>'
+                );
+            }
+            
+            // Update total forms count
+            const totalForms = $('#id_items-TOTAL_FORMS');
+            totalForms.val(parseInt(totalForms.val()) + 1);
+            
+            // Add new row
+            lastRow.after(newRow);
+            
+            // Reinitialize Select2 for both rows
+            lastRow.find('.item-select').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Select an item'
+            });
+            
+            newRow.find('.item-select').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Select an item'
+            });
         });
-    }
-    
-    // Track user modifications to price
-    $(document).on('input', 'input[name$="-price"]', function() {
-        $(this).data('user-modified', true);
-        updateTotal();
-    });
-    
-    // Handle quantity changes
-    $(document).on('input', 'input[name$="-quantity"]', function() {
-        updateTotal();
-    });
-    
-    // Calculate total
-    function updateTotal() {
-        let total = 0;
-        $('.item-row').each(function() {
-            const quantity = parseFloat($(this).find('input[name$="-quantity"]').val()) || 0;
-            const price = parseFloat($(this).find('input[name$="-price"]').val()) || 0;
-            total += quantity * price;
+        
+        // Remove item row
+        $(document).on('click', '.remove-item', function() {
+            const row = $(this).closest('.item-row');
+            if ($('.item-row').length > 1) {
+                row.remove();
+                calculateOrderTotal();
+                
+                // Update total forms count
+                const totalForms = $('#id_items-TOTAL_FORMS');
+                totalForms.val(parseInt(totalForms.val()) - 1);
+                
+                // Update indices for remaining rows
+                $('.item-row').each(function(index) {
+                    $(this).find('select, input').each(function() {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            const newName = name.replace(/\d+/, index);
+                            $(this).attr('name', newName);
+                            $(this).attr('id', newName);
+                        }
+                    });
+                });
+            } else {
+                alert('At least one item is required');
+            }
         });
-        $('#orderTotal').text(total.toFixed(2));
-    }
-    
-    // Initialize on page load
-    initializeFormElements();
-    updateTotal();
-});
+        
+        // Handle item selection
+        $(document).on('change', '.item-select', function() {
+            const row = $(this).closest('.item-row');
+            const selectedOption = $(this).find('option:selected');
+            const itemId = $(this).val();
+            const itemName = selectedOption.text();
+            const price = selectedOption.data('price');
+            const unit = selectedOption.data('unit');
+            
+            // Update hidden item field
+            row.find('input[name$="-item"]').val(itemId);
+            
+            // Update item name field
+            row.find('input[name$="-item_name"]').val(itemName);
+            
+            // Update price if not already set
+            if (!row.find('input[name$="-price"]').val()) {
+                row.find('input[name$="-price"]').val(price);
+                calculateOrderTotal();
+            }
+        });
+        
+        // Form submission handling
+        $('#orderForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate required fields
+            let isValid = true;
+            
+            // Check customer
+            if (!$('#id_customer').val()) {
+                alert('Please select a customer');
+                isValid = false;
+                return false;
+            }
+            
+            // Check items
+            $('.item-row').each(function() {
+                const row = $(this);
+                const itemId = row.find('.item-select').val();
+                const quantity = row.find('input[name$="-quantity"]').val();
+                const price = row.find('input[name$="-price"]').val();
+                
+                if (!itemId || !quantity || !price) {
+                    alert('Please fill in all item details');
+                    isValid = false;
+                    return false;
+                }
+            });
+            
+            if (!isValid) return false;
+            
+            // Submit form
+            this.submit();
+        });
+        
+        // Create new item
+        $('#createItemBtn').on('click', function() {
+            const data = {
+                name: $('#itemName').val(),
+                unit: $('#itemUnit').val(),
+                default_price: $('#itemDefaultPrice').val(),
+                description: $('#itemDescription').val(),
+                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+            };
+            
+            $.ajax({
+                url: '/items/create/',
+                type: 'POST',
+                data: data,
+                success: function(response) {
+                    // Add new item to all select dropdowns
+                    const option = new Option(response.name, response.id, true, true);
+                    $(option).data('price', response.default_price);
+                    $(option).data('unit', response.unit);
+                    $('.item-select').append(option).trigger('change');
+                    
+                    // Select the new item in the dropdown that triggered the creation
+                    const select = $('#createItemModal').data('select');
+                    if (select) {
+                        select.val(response.id).trigger('change');
+                    }
+                    
+                    // Clear and close modal
+                    $('#createItemModal').modal('hide');
+                    $('#createItemForm').trigger('reset');
+                    
+                    alert('Item created successfully');
+                },
+                error: function(xhr) {
+                    alert('Error creating item: ' + xhr.responseText);
+                }
+            });
+        });
+        
+        // Calculate initial total
+        calculateOrderTotal();
+    });
 </script>
 {% endblock %} 

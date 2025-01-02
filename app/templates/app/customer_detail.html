@@ -2,98 +2,128 @@
 
 {% block title %}{{ customer.name }} - Order Manager{% endblock %}
 
-{% block content %}
-<div class="row mb-4">
-    <div class="col-md-8">
-        <h2>{{ customer.name }}</h2>
-    </div>
-    <div class="col-md-4 text-end">
-        <a href="{% url 'app:customer-order-create' customer.pk %}" class="btn btn-primary">New Order</a>
-        <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-success">Record Payment</a>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Customer Details</h5>
+{% block main_content %}
+<div class="container-fluid">
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">{{ customer.name }}</h5>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'app:customer-order-create' customer.pk %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>New Order
+                    </a>
+                    <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-success">
+                        <i class="fas fa-money-bill me-2"></i>Record Payment
+                    </a>
+                </div>
             </div>
-            <div class="card-body">
-                <p><strong>Address:</strong> {{ customer.address }}</p>
-                <p><strong>Mobile:</strong> {{ customer.mobile1 }}
-                    {% if customer.mobile2 %}<br>{{ customer.mobile2 }}{% endif %}
-                </p>
-                <p><strong>Location:</strong> {{ customer.location }}</p>
-                <p><strong>ID Number:</strong> {{ customer.id_number|default:"Not provided" }}</p>
-                <p><strong>Outstanding Balance:</strong> ₹{{ customer.outstanding_balance|floatformat:2 }}</p>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-4">Mobile</dt>
+                        <dd class="col-sm-8">{{ customer.mobile1 }}{% if customer.mobile2 %}, {{ customer.mobile2 }}{% endif %}</dd>
+                        
+                        <dt class="col-sm-4">Address</dt>
+                        <dd class="col-sm-8">{{ customer.address }}</dd>
+                        
+                        <dt class="col-sm-4">Location</dt>
+                        <dd class="col-sm-8">{{ customer.location|default:"-" }}</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-4">Total Orders</dt>
+                        <dd class="col-sm-8">{{ orders.count }}</dd>
+                        
+                        <dt class="col-sm-4">Total Amount</dt>
+                        <dd class="col-sm-8">₹{{ total_amount|floatformat:2 }}</dd>
+                        
+                        <dt class="col-sm-4">Total Payments</dt>
+                        <dd class="col-sm-8">₹{{ total_payments|floatformat:2 }}</dd>
+                        
+                        <dt class="col-sm-4">Balance</dt>
+                        <dd class="col-sm-8">
+                            <span class="{% if balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₹{{ balance|floatformat:2 }}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Recent Orders</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for order in orders %}
-                            <tr>
-                                <td>{{ order.order_date }}</td>
-                                <td>₹{{ order.total_amount|floatformat:2 }}</td>
-                                <td>
-                                    <a href="{% url 'app:order-detail' order.pk %}" class="btn btn-sm btn-info">View</a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="3" class="text-center">No orders found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Orders</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.order_date }}</td>
+                                    <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'app:order-detail' order.pk %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No orders found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Recent Payments</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for payment in payments %}
-                            <tr>
-                                <td>{{ payment.payment_date }}</td>
-                                <td>₹{{ payment.amount_received|floatformat:2 }}</td>
-                                <td>{{ payment.notes|default:"-" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="3" class="text-center">No payments found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Payments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date }}</td>
+                                    <td>₹{{ payment.amount_received|floatformat:2 }}</td>
+                                    <td>{{ payment.notes|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No payments found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

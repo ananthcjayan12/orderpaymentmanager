@@ -1,131 +1,280 @@
-{% extends 'base.html' %}
-{% load static %}
-
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-            <div class="position-sticky pt-3">
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
-                           href="{% url 'app:home' %}">
-                            <i class="fas fa-home me-2"></i>
-                            Dashboard
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}" 
-                           href="{% url 'app:customer-list' %}">
-                            <i class="fas fa-users me-2"></i>
-                            Customers
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {% if 'order' in request.resolver_match.url_name and 'template' not in request.resolver_match.url_name %}active{% endif %}" 
-                           href="{% url 'app:order-list' %}">
-                            <i class="fas fa-shopping-cart me-2"></i>
-                            Orders
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}" 
-                           href="{% url 'app:payment-list' %}">
-                            <i class="fas fa-money-bill-wave me-2"></i>
-                            Payments
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {% if 'template' in request.resolver_match.url_name %}active{% endif %}" 
-                           href="{% url 'app:order-template-list' %}">
-                            <i class="fas fa-copy me-2"></i>
-                            Order Templates
-                        </a>
-                    </li>
-                </ul>
-
-                {% if user.user_type == 'COMPANY_ADMIN' %}
-                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                    <span>Administration</span>
-                </h6>
-                <ul class="nav flex-column mb-2">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'accounts:agent_list' %}">
-                            <i class="fas fa-user-tie me-2"></i>
-                            Manage Agents
-                        </a>
-                    </li>
-                </ul>
-                {% endif %}
-            </div>
-        </nav>
-
-        <!-- Main content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                {% block header %}{% endblock %}
-            </div>
-            
-            {% if messages %}
-            <div class="messages mb-3">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            
-            {% block main_content %}{% endblock %}
-        </main>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    .sidebar {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 100;
-        padding: 48px 0 0;
-        box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
-    }
-
-    .sidebar .nav-link {
-        font-weight: 500;
-        color: #333;
-        padding: 0.75rem 1rem;
-        border-radius: 0.5rem;
-        margin: 0.25rem 0.5rem;
-    }
-
-    .sidebar .nav-link:hover {
-        background-color: rgba(0, 0, 0, .05);
-    }
-
-    .sidebar .nav-link.active {
-        color: var(--primary-color);
-        background-color: var(--primary-light);
-    }
-
-    .sidebar-heading {
-        font-size: .75rem;
-        text-transform: uppercase;
-    }
-
-    @media (max-width: 767.98px) {
-        .sidebar {
-            top: 5rem;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Order Manager{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --header-height: 60px;
+            --primary-light: rgba(13, 110, 253, 0.1);
+            --success-light: rgba(25, 135, 84, 0.1);
+            --info-light: rgba(13, 202, 240, 0.1);
+            --warning-light: rgba(255, 193, 7, 0.1);
+            --danger-light: rgba(220, 53, 69, 0.1);
+            --border-color: #e9ecef;
         }
-    }
-</style>
-{% endblock %} 
+
+        body {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: #fff;
+            border-right: 1px solid var(--border-color);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        #sidebar.collapsed {
+            margin-left: calc(-1 * var(--sidebar-width));
+        }
+
+        .sidebar-header {
+            height: var(--header-height);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+        }
+
+        .nav-item {
+            border-radius: 0.5rem;
+            margin: 0.25rem 0.5rem;
+        }
+
+        .nav-link {
+            color: #666;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background-color: var(--primary-light);
+            color: var(--bs-primary);
+        }
+
+        .nav-link.active {
+            background-color: var(--primary-light);
+            color: var(--bs-primary);
+            font-weight: 500;
+        }
+
+        /* Main Content Styles */
+        #main {
+            margin-left: var(--sidebar-width);
+            padding: 1rem;
+            transition: all 0.3s;
+            min-height: 100vh;
+        }
+
+        #main.expanded {
+            margin-left: 0;
+        }
+
+        /* Header Styles */
+        .main-header {
+            height: var(--header-height);
+            background: #fff;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            margin: -1rem -1rem 1rem -1rem;
+        }
+
+        .toggle-sidebar {
+            display: none;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            #sidebar {
+                margin-left: calc(-1 * var(--sidebar-width));
+            }
+
+            #sidebar.active {
+                margin-left: 0;
+            }
+
+            #main {
+                margin-left: 0;
+            }
+
+            .toggle-sidebar {
+                display: block;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                opacity: 0;
+                transition: all 0.5s ease-in-out;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+                opacity: 1;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <a href="{% url 'app:home' %}" class="sidebar-brand">Order Manager</a>
+            <button class="toggle-sidebar d-md-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="py-2">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a href="{% url 'app:home' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'app:customer-list' %}" class="nav-link {% if '/customers/' in request.path %}active{% endif %}">
+                        <i class="fas fa-users"></i>
+                        <span>Customers</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'app:order-list' %}" class="nav-link {% if '/orders/' in request.path %}active{% endif %}">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Orders</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'app:payment-list' %}" class="nav-link {% if '/payments/' in request.path %}active{% endif %}">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Payments</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'app:order-template-list' %}" class="nav-link {% if '/templates/' in request.path %}active{% endif %}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Order Templates</span>
+                    </a>
+                </li>
+                {% if user.user_type == 'COMPANY_ADMIN' %}
+                <li class="nav-item mt-3">
+                    <div class="px-3">
+                        <small class="text-muted text-uppercase">Administration</small>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'accounts:agent_list' %}" class="nav-link {% if '/agents/' in request.path %}active{% endif %}">
+                        <i class="fas fa-user-tie"></i>
+                        <span>Manage Agents</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main id="main">
+        <header class="main-header">
+            <button class="toggle-sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="ms-auto d-flex align-items-center">
+                <div class="dropdown">
+                    <button class="btn btn-link text-dark dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ user.get_full_name|default:user.username }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="{% url 'accounts:company_dashboard' %}">Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        {% if messages %}
+        <div class="messages mb-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block main_content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Select2 -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Custom JS -->
+    <script>
+        $(document).ready(function() {
+            // Toggle sidebar on mobile
+            $('.toggle-sidebar').on('click', function() {
+                $('#sidebar').toggleClass('active');
+                $('.sidebar-overlay').toggleClass('active');
+            });
+
+            // Close sidebar when clicking overlay
+            $('.sidebar-overlay').on('click', function() {
+                $('#sidebar').removeClass('active');
+                $('.sidebar-overlay').removeClass('active');
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

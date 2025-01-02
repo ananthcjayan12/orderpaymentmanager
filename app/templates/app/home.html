@@ -389,98 +389,137 @@
                 </div>
             </div>
 
+            <!-- Agent Performance Section -->
             {% if user.user_type == 'COMPANY_ADMIN' and agent_performance %}
-            <div class="card mt-4">
+            <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Agent Performance</h5>
-                    <small class="text-muted">Last 30 days</small>
+                    <span class="text-muted">Last 30 days</span>
                 </div>
                 <div class="card-body">
-                    {% for agent in agent_performance %}
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="avatar-sm bg-primary-light text-primary rounded me-3">
-                            {% if agent.name %}
-                                {{ agent.name|slice:":1"|upper }}
-                            {% else %}
-                                <i class="fas fa-user"></i>
-                            {% endif %}
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0">{{ agent.name|default:"Unnamed Agent" }}</h6>
-                                    <small class="text-muted">
-                                        {{ agent.orders_count }} order{{ agent.orders_count|pluralize }}
-                                        {% if agent.last_active %}
-                                        · Last active {{ agent.last_active|timesince }} ago
-                                        {% endif %}
-                                    </small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="text-success fw-bold">₹{{ agent.collections|floatformat:2 }}</span>
-                                    <br>
-                                    <small class="text-muted">Collections</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4">
-                        <div class="text-muted">
-                            <i class="fas fa-users fa-2x mb-3"></i>
-                            <p>No agents found</p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    
-                    {% if agent_performance.paginator.num_pages > 1 %}
-                    <div class="d-flex justify-content-center mt-3">
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                {% if agent_performance.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?agents_page=1{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-double-left"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?agents_page={{ agent_performance.previous_page_number }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-left"></i>
-                                    </a>
-                                </li>
-                                {% endif %}
-                                
-                                {% for num in agent_performance.paginator.page_range %}
-                                {% if num == agent_performance.number %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                                {% elif num > agent_performance.number|add:'-3' and num < agent_performance.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?agents_page={{ num }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        {{ num }}
-                                    </a>
-                                </li>
-                                {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Agent</th>
+                                    <th>Orders</th>
+                                    <th>Collections</th>
+                                    <th>Performance</th>
+                                    <th>Last Active</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for agent in agent_performance %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary-light text-primary rounded me-3">
+                                                {{ agent.name|make_list|first|upper }}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ agent.name }}</h6>
+                                                <small class="text-muted">
+                                                    Avg. Order: ₹{{ agent.avg_order_value|floatformat:2 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <h6 class="mb-0">{{ agent.total_orders }} orders</h6>
+                                            <small class="text-muted">
+                                                ₹{{ agent.total_order_amount|floatformat:2 }} total
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <h6 class="mb-0">₹{{ agent.total_collections|floatformat:2 }}</h6>
+                                            <small class="{% if agent.pending_collections > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                {% if agent.pending_collections > 0 %}
+                                                    ₹{{ agent.pending_collections|floatformat:2 }} pending
+                                                {% else %}
+                                                    All collected
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 me-2">
+                                                <div class="progress" style="height: 6px;">
+                                                    <div class="progress-bar {% if agent.collection_percentage >= 80 %}bg-success{% elif agent.collection_percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                                         role="progressbar"
+                                                         style="width: {{ agent.collection_percentage }}%"
+                                                         aria-valuenow="{{ agent.collection_percentage }}"
+                                                         aria-valuemin="0"
+                                                         aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ agent.collection_percentage|floatformat:1 }}%</small>
+                                        </div>
+                                        <small class="text-muted">
+                                            Last 30d: ₹{{ agent.last_month_collections|floatformat:2 }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            {% if agent.last_active %}
+                                                {{ agent.last_active|timesince }} ago
+                                            {% else %}
+                                                Never active
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted">
+                                            {{ agent.last_month_orders }} orders this month
+                                        </small>
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                                
-                                {% if agent_performance.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?agents_page={{ agent_performance.next_page_number }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-right"></i>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?agents_page={{ agent_performance.paginator.num_pages }}{% if page %}&page={{ page }}{% endif %}{% if activities_page %}&activities_page={{ activities_page }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
-                                        <i class="fas fa-angle-double-right"></i>
-                                    </a>
-                                </li>
-                                {% endif %}
-                            </ul>
-                        </nav>
+                            </tbody>
+                        </table>
                     </div>
-                    {% endif %}
                 </div>
+                {% if agent_performance.has_other_pages %}
+                <div class="card-footer">
+                    <nav>
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if agent_performance.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?agents_page=1">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?agents_page={{ agent_performance.previous_page_number }}">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    Page {{ agent_performance.number }} of {{ agent_performance.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if agent_performance.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?agents_page={{ agent_performance.next_page_number }}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?agents_page={{ agent_performance.paginator.num_pages }}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>

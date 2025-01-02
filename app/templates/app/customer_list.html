@@ -2,284 +2,97 @@
 
 {% block title %}Customers - Order Manager{% endblock %}
 
-{% block extra_css %}
-<style>
-    .customer-card {
-        transition: all 0.2s ease;
-        border: 1px solid var(--border-color);
-    }
-    
-    .customer-card:hover {
-        transform: translateY(-2px);
-        border-color: var(--primary-color);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    
-    .customer-info {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-    }
-    
-    .customer-avatar {
-        width: 3.5rem;
-        height: 3.5rem;
-        background-color: var(--primary-light);
-        color: var(--primary-color);
-        border-radius: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-    
-    .customer-details {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .customer-name {
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 0.25rem;
-        font-size: 1.125rem;
-    }
-    
-    .customer-contact {
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-    }
-    
-    .customer-contact-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.25rem;
-    }
-    
-    .customer-contact-item i {
-        width: 1rem;
-        text-align: center;
-        color: var(--text-light);
-    }
-    
-    .customer-balance {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    
-    .balance-positive {
-        background-color: var(--danger-light);
-        color: var(--danger-color);
-    }
-    
-    .balance-zero {
-        background-color: var(--success-light);
-        color: var(--success-color);
-    }
-    
-    .customer-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-    
-    .search-container {
-        max-width: 600px;
-        margin: 0 auto 2rem;
-    }
-    
-    .search-box {
-        position: relative;
-    }
-    
-    .search-box .form-control {
-        padding: 1rem 1rem 1rem 3rem;
-        border-radius: 1rem;
-        border: 1px solid var(--border-color);
-        font-size: 1rem;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    }
-    
-    .search-box .form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 4px var(--primary-light);
-    }
-    
-    .search-icon {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-light);
-        font-size: 1.25rem;
-    }
-    
-    @media (max-width: 768px) {
-        .customer-info {
-            flex-direction: row;
-            text-align: left;
-            gap: 1rem;
-        }
-        
-        .customer-avatar {
-            width: 3rem;
-            height: 3rem;
-            font-size: 1.25rem;
-            margin: 0;
-        }
-        
-        .customer-actions {
-            grid-template-columns: 1fr;
-        }
-        
-        .search-container {
-            margin-bottom: 1.5rem;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h3 mb-0">
-        <i class="fas fa-users me-2 text-primary"></i>Customers
-    </h2>
-    <a href="{% url 'app:customer-create' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i>
-        <span class="d-none d-sm-inline ms-2">Add Customer</span>
-    </a>
-</div>
-
-<div class="search-container">
-    <div class="search-box">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" class="form-control form-control-lg" id="customerSearch" 
-               placeholder="Search customers by name, phone, or location...">
-    </div>
-</div>
-
-<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-    {% for customer in customers %}
-    <div class="col customer-item">
-        <div class="card customer-card h-100">
-            <div class="card-body">
-                <div class="customer-info">
-                    <div class="customer-avatar">
-                        {{ customer.name|slice:":1"|upper }}
-                    </div>
-                    <div class="customer-details">
-                        <h3 class="customer-name text-truncate">{{ customer.name }}</h3>
-                        <div class="customer-contact">
-                            <div class="customer-contact-item">
-                                <i class="fas fa-phone"></i>
-                                <span class="text-truncate">{{ customer.mobile1 }}</span>
-                            </div>
-                            {% if customer.mobile2 %}
-                            <div class="customer-contact-item">
-                                <i class="fas fa-phone"></i>
-                                <span class="text-truncate">{{ customer.mobile2 }}</span>
-                            </div>
-                            {% endif %}
-                            <div class="customer-contact-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span class="text-truncate">{{ customer.location|default:"No location" }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="customer-balance {% if customer.outstanding_balance > 0 %}balance-positive{% else %}balance-zero{% endif %}">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>Outstanding Balance</span>
-                        <span class="fw-bold">₹{{ customer.outstanding_balance|floatformat:2 }}</span>
-                    </div>
-                </div>
-
-                <div class="customer-actions">
-                    <a href="{% url 'app:customer-detail' customer.pk %}" class="btn btn-outline-primary">
-                        <i class="fas fa-eye"></i>
-                        <span class="d-none d-sm-inline ms-2">Details</span>
-                    </a>
-                    <a href="{% url 'app:customer-order-create' customer.pk %}" class="btn btn-outline-success">
-                        <i class="fas fa-plus"></i>
-                        <span class="d-none d-sm-inline ms-2">Order</span>
-                    </a>
-                    <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-outline-info">
-                        <i class="fas fa-money-bill-wave"></i>
-                        <span class="d-none d-sm-inline ms-2">Payment</span>
+{% block main_content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Customers</h5>
+                <div class="d-flex gap-2">
+                    <form class="d-flex" method="get">
+                        <input type="search" name="search" class="form-control me-2" placeholder="Search customers..." value="{{ request.GET.search }}">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                    <a href="{% url 'app:customer-create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Customer
                     </a>
                 </div>
             </div>
         </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="card text-center py-5">
-            <div class="card-body">
-                <div class="mb-4">
-                    <i class="fas fa-users fa-3x text-secondary opacity-50"></i>
-                </div>
-                <h3 class="h4 mb-2">No Customers Yet</h3>
-                <p class="text-secondary mb-4">Get started by adding your first customer</p>
-                <a href="{% url 'app:customer-create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add New Customer
-                </a>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Contact</th>
+                            <th>Location</th>
+                            <th>Outstanding</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary-light text-primary rounded me-3">
+                                        {{ customer.name|make_list|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ customer.name }}</h6>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {{ customer.mobile1 }}
+                                {% if customer.mobile2 %}
+                                <br>
+                                <small class="text-muted">{{ customer.mobile2 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ customer.location }}</td>
+                            <td>
+                                <span class="{% if customer.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ₹{{ customer.balance_amount|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'app:customer-order-create' customer.id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-plus"></i>
+                                        <span class="d-none d-md-inline ms-1">Order</span>
+                                    </a>
+                                    <a href="{% url 'app:customer-payment-create' customer.id %}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-money-bill"></i>
+                                        <span class="d-none d-md-inline ms-1">Payment</span>
+                                    </a>
+                                    <a href="{% url 'app:customer-detail' customer.id %}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-eye"></i>
+                                        <span class="d-none d-md-inline ms-1">Details</span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-users fa-2x mb-3"></i>
+                                    <p>No customers found{% if search_query %} matching "{{ search_query }}"{% endif %}</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-    {% endfor %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-$(document).ready(function() {
-    const $searchInput = $('#customerSearch');
-    const $customerItems = $('.customer-item');
-    
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-    
-    const filterCustomers = debounce(function(searchText) {
-        searchText = searchText.toLowerCase().trim();
-        
-        $customerItems.each(function() {
-            const $item = $(this);
-            const customerName = $item.find('.customer-name').text().toLowerCase();
-            const customerContact = $item.find('.customer-contact').text().toLowerCase();
-            
-            if (customerName.includes(searchText) || customerContact.includes(searchText)) {
-                $item.fadeIn(200);
-            } else {
-                $item.fadeOut(200);
-            }
-        });
-    }, 300);
-    
-    $searchInput
-        .on('input', function() {
-            filterCustomers(this.value);
-        })
-        .on('focus', function() {
-            $(this).parent().addClass('shadow-sm');
-        })
-        .on('blur', function() {
-            $(this).parent().removeClass('shadow-sm');
-        });
-});
-</script>
 {% endblock %} 

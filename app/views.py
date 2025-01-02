@@ -245,14 +245,61 @@ def home(request):
             
             # Get agent name with proper fallbacks
             agent_name = None
-            if hasattr(agent, 'full_name') and agent.full_name:  # First try agent's full_name
+            if hasattr(agent, 'full_name') and agent.full_name:
                 agent_name = agent.full_name
-            elif agent.user.get_full_name():  # Then try user's full name
+            elif agent.user.get_full_name():
                 agent_name = agent.user.get_full_name()
-            elif agent.user.username:  # Finally fallback to username
+            elif agent.user.username:
                 agent_name = agent.user.username
             
-            collections = agent_payments.aggregate(
+            # Calculate total order amount
+            total_order_amount = agent_orders.aggregate(
+                total=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            F('orderitems__quantity') * F('orderitems__price'),
+                            output_field=DecimalField(max_digits=10, decimal_places=2)
+                        )
+                    ),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                )
+            )['total']
+            
+            # Calculate total collections
+            total_collections = agent_payments.aggregate(
+                total=Coalesce(
+                    Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                )
+            )['total']
+            
+            # Calculate pending collections
+            pending_collections = total_order_amount - total_collections
+            
+            # Calculate collection percentage
+            collection_percentage = (
+                (total_collections / total_order_amount * 100)
+                if total_order_amount > 0 else 0
+            )
+            
+            # Get last 30 days metrics
+            last_month = timezone.now() - timezone.timedelta(days=30)
+            last_month_orders = agent_orders.filter(created_at__gte=last_month)
+            last_month_payments = agent_payments.filter(created_at__gte=last_month)
+            
+            last_month_order_amount = last_month_orders.aggregate(
+                total=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            F('orderitems__quantity') * F('orderitems__price'),
+                            output_field=DecimalField(max_digits=10, decimal_places=2)
+                        )
+                    ),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                )
+            )['total']
+            
+            last_month_collections = last_month_payments.aggregate(
                 total=Coalesce(
                     Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
                     Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
@@ -272,15 +319,28 @@ def home(request):
             else:
                 last_active = None
             
+            # Calculate average order value
+            avg_order_value = (
+                total_order_amount / agent_orders.count()
+                if agent_orders.count() > 0 else 0
+            )
+            
             agent_performance.append({
-                'name': agent_name or "Unnamed Agent",  # Ensure we always have a name
-                'collections': collections,
-                'orders_count': agent_orders.count(),
+                'name': agent_name or "Unnamed Agent",
+                'total_orders': agent_orders.count(),
+                'total_order_amount': total_order_amount,
+                'total_collections': total_collections,
+                'pending_collections': pending_collections,
+                'collection_percentage': collection_percentage,
+                'last_month_orders': last_month_orders.count(),
+                'last_month_order_amount': last_month_order_amount,
+                'last_month_collections': last_month_collections,
+                'avg_order_value': avg_order_value,
                 'last_active': last_active
             })
         
         # Sort agents by collections
-        agent_performance.sort(key=lambda x: x['collections'], reverse=True)
+        agent_performance.sort(key=lambda x: x['total_collections'], reverse=True)
         
         # Paginate agent performance
         agents_page = request.GET.get('agents_page', 1)
@@ -365,8 +425,53 @@ class CustomerListView(LoginRequiredMixin, ListView):
     ordering = ['name']
 
     def get_queryset(self):
-        """Filter customers by company."""
-        return Customer.objects.filter(company=self.request.user.company)
+        """Filter customers by company and annotate with calculated fields."""
+        queryset = Customer.objects.filter(company=self.request.user.company)
+        
+        # Search functionality
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(mobile1__icontains=search_query) |
+                Q(mobile2__icontains=search_query) |
+                Q(location__icontains=search_query)
+            )
+        
+        # Annotate with calculated fields
+        queryset = queryset.annotate(
+            total_orders=Count('orders'),
+            total_amount=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('orders__orderitems__quantity') * F('orders__orderitems__price'),
+                        output_field=DecimalField(max_digits=10, decimal_places=2)
+                    )
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            ),
+            total_payments=Coalesce(
+                Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            ),
+            balance_amount=ExpressionWrapper(
+                Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            F('orders__orderitems__quantity') * F('orders__orderitems__price'),
+                            output_field=DecimalField(max_digits=10, decimal_places=2)
+                        )
+                    ),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                ) - Coalesce(
+                    Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
+        
+        return queryset.order_by('name')
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
     """View for customer details."""
@@ -381,8 +486,42 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         customer = self.get_object()
-        context['orders'] = customer.orders.all().order_by('-order_date')
-        context['payments'] = customer.payments.all().order_by('-payment_date')
+        
+        # Get orders and payments
+        orders = customer.orders.all().order_by('-order_date')
+        payments = customer.payments.all().order_by('-payment_date')
+        
+        # Calculate total amount from orders
+        total_amount = orders.aggregate(
+            total=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('orderitems__quantity') * F('orderitems__price'),
+                        output_field=DecimalField(max_digits=10, decimal_places=2)
+                    )
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        
+        # Calculate total payments
+        total_payments = payments.aggregate(
+            total=Coalesce(
+                Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )['total']
+        
+        # Calculate balance
+        balance = total_amount - total_payments
+        
+        context.update({
+            'orders': orders,
+            'payments': payments,
+            'total_amount': total_amount,
+            'total_payments': total_payments,
+            'balance': balance
+        })
         return context
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):
