@@ -153,3 +153,16 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# CSRF and CORS Settings
+CSRF_TRUSTED_ORIGINS = [
+    'https://ordermanager.srshti.co.in',
+    'http://ordermanager.srshti.co.in',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'https://ordermanager.srshti.co.in',
+    'http://ordermanager.srshti.co.in',
+]
+
+CORS_ALLOW_CREDENTIALS = True
