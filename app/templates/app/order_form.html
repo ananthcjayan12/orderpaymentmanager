@@ -189,6 +189,7 @@
                                             {{ item.name }}
                                         </option>
                                         {% endfor %}
+                                        <option value="new" data-price="0" data-unit="">+ Add New Item</option>
                                     </select>
                                     {{ form.item_name }}
                                 </td>
@@ -371,11 +372,10 @@
         // Add new item row
         $('#addItem').on('click', function() {
             const lastRow = $('.item-row:last');
-            const newRow = lastRow.clone(true);
             const forms = $('.item-row').length;
             
-            // Destroy Select2 before cloning
-            lastRow.find('.item-select').select2('destroy');
+            // Clone the row without Select2 elements
+            const newRow = lastRow.clone();
             
             // Update form index
             newRow.find('select, input').each(function() {
@@ -393,6 +393,9 @@
             newRow.find('.line-total').val('0.00');
             newRow.find('input[name$="-DELETE"]').prop('checked', false);
             
+            // Remove any existing Select2 elements
+            newRow.find('.select2').remove();
+            
             // Add remove button if not present
             if (!newRow.find('.remove-item').length) {
                 newRow.find('td:last').append(
@@ -408,13 +411,7 @@
             // Add new row
             lastRow.after(newRow);
             
-            // Reinitialize Select2 for both rows
-            lastRow.find('.item-select').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: 'Select an item'
-            });
-            
+            // Initialize Select2 for the new row
             newRow.find('.item-select').select2({
                 theme: 'bootstrap-5',
                 width: '100%',
@@ -454,6 +451,17 @@
             const row = $(this).closest('.item-row');
             const selectedOption = $(this).find('option:selected');
             const itemId = $(this).val();
+            
+            if (itemId === 'new') {
+                // Store the current select element for later use
+                $('#createItemModal').data('select', $(this));
+                // Clear the form
+                $('#createItemForm').trigger('reset');
+                // Show the modal
+                $('#createItemModal').modal('show');
+                return;
+            }
+            
             const itemName = selectedOption.text();
             const price = selectedOption.data('price');
             const unit = selectedOption.data('unit');
@@ -516,15 +524,19 @@
             };
             
             $.ajax({
-                url: '/items/create/',
+                url: '{% url "app:item-create" %}',
                 type: 'POST',
                 data: data,
                 success: function(response) {
                     // Add new item to all select dropdowns
-                    const option = new Option(response.name, response.id, true, true);
-                    $(option).data('price', response.default_price);
-                    $(option).data('unit', response.unit);
-                    $('.item-select').append(option).trigger('change');
+                    const newOption = new Option(response.name, response.id, false, false);
+                    $(newOption).data('price', response.default_price);
+                    $(newOption).data('unit', response.unit);
+                    
+                    $('.item-select').each(function() {
+                        // Add the option
+                        $(this).append(newOption.cloneNode(true));
+                    });
                     
                     // Select the new item in the dropdown that triggered the creation
                     const select = $('#createItemModal').data('select');
@@ -536,6 +548,7 @@
                     $('#createItemModal').modal('hide');
                     $('#createItemForm').trigger('reset');
                     
+                    // Show success message
                     alert('Item created successfully');
                 },
                 error: function(xhr) {

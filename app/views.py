@@ -879,22 +879,31 @@ def import_items_api(request):
 
 @login_required
 def create_item(request):
-    """API endpoint for creating items."""
+    """API endpoint to create a new item."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
     
     try:
-        # Create the item
+        # Get data from request
+        name = request.POST.get('name')
+        unit = request.POST.get('unit')
+        default_price = request.POST.get('default_price')
+        description = request.POST.get('description', '')
+        
+        # Validate required fields
+        if not all([name, unit, default_price]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        
+        # Create new item
         item = Item.objects.create(
             company=request.user.company,
-            name=request.POST['name'],
-            unit=request.POST['unit'],
-            default_price=request.POST['default_price'],
-            description=request.POST.get('description', ''),
-            is_active=True
+            name=name,
+            unit=unit,
+            default_price=default_price,
+            description=description
         )
         
-        # Return the item data
+        # Return success response
         return JsonResponse({
             'id': item.id,
             'name': item.name,
