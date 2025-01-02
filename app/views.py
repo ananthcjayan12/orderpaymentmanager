@@ -7,7 +7,7 @@ from django.db.models import Sum, Count, F, Q, Max, DecimalField, ExpressionWrap
 from django.db.models.functions import Coalesce, Cast
 from django.contrib import messages
 from django.db import transaction
-from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm, OrderTemplateItemFormSet
+from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
@@ -435,62 +435,14 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
 class CustomerCreateView(LoginRequiredMixin, CreateView):
     """View for creating a new customer."""
     model = Customer
+    form_class = CustomerForm
     template_name = 'app/customer_form.html'
-    fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number']
     success_url = reverse_lazy('app:customer-list')
 
-    def dispatch(self, request, *args, **kwargs):
-        """Check if user has a company before proceeding."""
-        if not request.user.company:
-            messages.error(request, "You must be associated with a company to create customers.")
-            return redirect('app:customer-list')
-        
-        # Add debug information
-        print(f"User: {request.user.email}")
-        print(f"User Type: {request.user.user_type}")
-        print(f"Company: {request.user.company}")
-        return super().dispatch(request, *args, **kwargs)
-
     def form_valid(self, form):
-        """Set the company before saving."""
-        try:
-            with transaction.atomic():
-                # Get the company instance
-                company = self.request.user.company
-                if not company:
-                    raise ValueError("User's company is not set")
-                
-                # Debug information before save
-                print(f"Form data: {form.cleaned_data}")
-                print(f"User company: {company}")
-                print(f"User company ID: {company.id}")
-                
-                # Verify company exists in database
-                from accounts.models import Company
-                try:
-                    company = Company.objects.get(id=company.id)
-                except Company.DoesNotExist:
-                    raise ValueError(f"Company with ID {company.id} does not exist")
-                
-                # Create customer instance
-                customer = form.save(commit=False)
-                customer.company = company
-                
-                # Debug information after company assignment
-                print(f"Customer company: {customer.company}")
-                print(f"Customer company ID: {customer.company.id if customer.company else None}")
-                
-                # Save the customer
-                customer.save()
-                messages.success(self.request, "Customer created successfully.")
-                return redirect(self.success_url)
-                
-        except Exception as e:
-            import traceback
-            print(f"Error details: {str(e)}")
-            print(f"Traceback: {traceback.format_exc()}")
-            messages.error(self.request, f"Error creating customer. Details: {str(e)}")
-            return self.form_invalid(form)
+        form.instance.company = self.request.user.company
+        messages.success(self.request, "Customer created successfully.")
+        return super().form_valid(form)
 
 # Order Views
 class OrderListView(LoginRequiredMixin, ListView):

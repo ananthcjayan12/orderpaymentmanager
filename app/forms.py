@@ -103,3 +103,16 @@ class PaymentForm(forms.ModelForm):
         if 'initial' in kwargs and 'customer' in kwargs['initial']:
             self.fields['customer'].widget.attrs['readonly'] = True
             self.fields['customer'].disabled = True 
+
+class CustomerForm(forms.ModelForm):
+    class Meta:
+        model = Customer
+        fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Address'}),
+            'mobile1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Primary Mobile'}),
+            'mobile2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Secondary Mobile (Optional)'}),
+            'location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Location'}),
+            'id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID Number (Optional)'})
+        } 
