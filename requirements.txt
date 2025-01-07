@@ -14,4 +14,3 @@ six==1.17.0
 sqlparse==0.5.3
 tzdata==2024.2
 gunicorn
-whitenoise==6.6.0
