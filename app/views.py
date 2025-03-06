@@ -173,25 +173,6 @@ def home(request):
     
     pending_collections = total_orders_amount - total_collections
     
-    context = {
-        'user': request.user,
-        'company': company,
-        'customers_count': customers.count(),
-        'orders_count': orders.count(),
-        'payments_count': payments.count(),
-        'total_collections': total_collections,
-        'pending_collections': pending_collections,
-        'customers_growth': customers_growth,
-        'orders_growth': orders_growth,
-        'collections_growth': collections_growth,
-        'current_month_orders': current_orders,
-        'current_month_collections': current_collections,
-        'timeframe': timeframe,
-        'start_date': start_date,
-        'end_date': end_date,
-        'user_type': user_type
-    }
-    
     # Get paginated recent customers with their details
     page = request.GET.get('page', 1)
     search_query = request.GET.get('search', '')
@@ -229,10 +210,15 @@ def home(request):
             ) - Coalesce(
                 Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
                 Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-            ),
+            ) + F('initial_balance'),
             output_field=DecimalField(max_digits=10, decimal_places=2)
         )
     )
+    
+    # Add the outstanding balance to each customer in the queryset
+    for customer in customer_queryset:
+        # Make sure we're using the property that includes initial_balance
+        customer.calculated_balance = customer.outstanding_balance
     
     # Apply sorting
     if sort_by.startswith('-'):
@@ -266,13 +252,28 @@ def home(request):
         recent_activities = activities_paginator.page(activities_paginator.num_pages)
     
     # Add all data to context
-    context.update({
+    context = {
+        'user': request.user,
+        'company': company,
+        'customers_count': customers.count(),
+        'orders_count': orders.count(),
+        'payments_count': payments.count(),
+        'total_collections': total_collections,
+        'pending_collections': pending_collections,
+        'customers_growth': customers_growth,
+        'orders_growth': orders_growth,
+        'collections_growth': collections_growth,
+        'current_month_orders': current_orders,
+        'current_month_collections': current_collections,
+        'timeframe': timeframe,
+        'start_date': start_date,
+        'end_date': end_date,
+        'user_type': user_type,
         'recent_customers': recent_customers,
         'recent_activities': recent_activities,
         'search_query': search_query,
-        'sort_by': sort_by,
-        'user_type': user_type
-    })
+        'sort_by': sort_by
+    }
     
     if user_type == 'COMPANY_ADMIN':
         # Add agent performance data for company admins
@@ -409,11 +410,51 @@ class CustomerListView(LoginRequiredMixin, ListView):
     model = Customer
     template_name = 'app/customer_list.html'
     context_object_name = 'customers'
-    ordering = ['name']
-
+    paginate_by = 10
+    
     def get_queryset(self):
-        """Filter customers by company."""
-        return Customer.objects.filter(company=self.request.user.company)
+        company = self.request.user.company
+        queryset = Customer.objects.filter(company=company)
+        
+        # Apply search filter if provided
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(mobile1__icontains=search_query) |
+                Q(mobile2__icontains=search_query) |
+                Q(address__icontains=search_query) |
+                Q(location__icontains=search_query) |
+                Q(id_number__icontains=search_query)
+            )
+        
+        # Apply sorting
+        sort_by = self.request.GET.get('sort', 'name')
+        if sort_by.startswith('-'):
+            queryset = queryset.order_by(sort_by, '-created_at')
+        else:
+            queryset = queryset.order_by(sort_by, 'created_at')
+        
+        # Annotate with balance calculation that includes initial_balance
+        queryset = queryset.annotate(
+            orders_total=Coalesce(
+                Sum(
+                    F('orders__orderitems__quantity') * F('orders__orderitems__price'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            ),
+            payments_total=Coalesce(
+                Sum('payments__amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        )
+        
+        # Calculate balance_amount including initial_balance
+        for customer in queryset:
+            customer.balance_amount = customer.orders_total - customer.payments_total + customer.initial_balance
+        
+        return queryset
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
     """View for customer details."""

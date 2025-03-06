@@ -107,12 +107,18 @@ class PaymentForm(forms.ModelForm):
 class CustomerForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number']
+        fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 'initial_balance']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Address'}),
             'mobile1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Primary Mobile'}),
             'mobile2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Secondary Mobile (Optional)'}),
             'location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Location'}),
-            'id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID Number (Optional)'})
-        } 
+            'id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID Number (Optional)'}),
+            'initial_balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Initial Outstanding Balance'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['initial_balance'].help_text = 'Enter any existing balance the customer owes from before using this system.'
+        self.fields['initial_balance'].label = 'Initial Outstanding Balance' 

@@ -17,6 +17,7 @@ class Customer(models.Model):
     mobile2 = models.CharField(max_length=20, blank=True, null=True)
     location = models.CharField(max_length=100)
     id_number = models.CharField(max_length=50, blank=True, null=True)
+    initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -32,7 +33,7 @@ class Customer(models.Model):
         total_payments = self.payments.aggregate(
             total=Sum('amount_received')
         )['total'] or 0
-        return total_orders - total_payments
+        return total_orders - total_payments + self.initial_balance
 
 class Item(models.Model):
     """Model for items."""
