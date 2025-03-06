@@ -171,7 +171,16 @@ def home(request):
             )
         )['total']
     
-    pending_collections = total_orders_amount - total_collections
+    # Get total initial balance from all customers
+    total_initial_balance = customers.aggregate(
+        total=Coalesce(
+            Sum('initial_balance', output_field=DecimalField(max_digits=10, decimal_places=2)),
+            Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+        )
+    )['total']
+    
+    # Add initial balance to pending collections calculation
+    pending_collections = total_orders_amount - total_collections + total_initial_balance
     
     # Get paginated recent customers with their details
     page = request.GET.get('page', 1)
