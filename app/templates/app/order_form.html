@@ -219,6 +219,17 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <div class="form-group" id="emi_amount_container">
+                            <label for="{{ form.emi_amount.id_for_label }}" class="form-label">EMI Amount *</label>
+                            {{ form.emi_amount }}
+                            {{ form.emi_amount.errors }}
+                            <small class="form-text text-muted">Amount to be collected per installment</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
                         <div class="form-group">
                             <label for="{{ form.collection_frequency.id_for_label }}" class="form-label">Collection Frequency *</label>
                             {{ form.collection_frequency }}
@@ -226,18 +237,13 @@
                             <small class="form-text text-muted">{{ form.collection_frequency.help_text }}</small>
                         </div>
                     </div>
-                </div>
-                
-                <div class="row g-4 mt-2">
-                    <div class="col-md-6">
+                    <div class="col-md-6" id="collection_days_container">
                         <div class="form-group" id="weekly_collection_container">
                             <label for="{{ form.collection_day_of_week.id_for_label }}" class="form-label">Collection Day (Weekly)</label>
                             {{ form.collection_day_of_week }}
                             {{ form.collection_day_of_week.errors }}
                             <small class="form-text text-muted">{{ form.collection_day_of_week.help_text }}</small>
                         </div>
-                    </div>
-                    <div class="col-md-6">
                         <div class="form-group" id="monthly_collection_container">
                             <label for="{{ form.collection_day_of_month.id_for_label }}" class="form-label">Collection Day (Monthly)</label>
                             {{ form.collection_day_of_month }}
@@ -441,11 +447,32 @@
             }
         }
         
+        // Function to toggle EMI amount field based on order type
+        function toggleEmiAmountField() {
+            const orderType = $('#id_order_type').val();
+            
+            if (orderType === 'B2C_EMI' || orderType === 'B2B_EMI') {
+                $('#emi_amount_container').show();
+                // Make EMI amount field required when visible
+                $('#id_emi_amount').prop('required', true);
+            } else {
+                $('#emi_amount_container').hide();
+                // Make EMI amount field not required when hidden
+                $('#id_emi_amount').prop('required', false);
+            }
+        }
+        
         // Initial toggle of collection fields
         toggleCollectionDayFields();
         
+        // Initial toggle of EMI amount field
+        toggleEmiAmountField();
+        
         // Listen for changes to collection frequency
         $('#id_collection_frequency').on('change', toggleCollectionDayFields);
+        
+        // Listen for changes to order type
+        $('#id_order_type').on('change', toggleEmiAmountField);
         
         // Initialize Select2 for customer dropdown with search
         $('#id_customer').select2({
@@ -816,6 +843,18 @@
                 alert('Please select an order type');
                 isValid = false;
                 return false;
+            }
+            
+            // Validate EMI amount for EMI orders
+            const orderType = $('#id_order_type').val();
+            if (orderType === 'B2C_EMI' || orderType === 'B2B_EMI') {
+                const emiAmount = parseFloat($('#id_emi_amount').val());
+                if (!emiAmount || emiAmount <= 0) {
+                    alert('Please enter a valid EMI amount');
+                    $('#id_emi_amount').focus();
+                    isValid = false;
+                    return false;
+                }
             }
             
             // Validate collection frequency and related fields

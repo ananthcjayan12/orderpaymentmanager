@@ -72,7 +72,8 @@ class Order(models.Model):
     ORDER_TYPE_CHOICES = [
         ('B2C_READY_CASH', 'B2C Ready Cash'),
         ('B2C_EMI', 'B2C EMI'),
-        ('B2B', 'B2B'),
+        ('B2B_READY_CASH', 'B2B Ready Cash'),
+        ('B2B_EMI', 'B2B EMI'),
     ]
     
     COLLECTION_FREQUENCY_CHOICES = [
@@ -106,6 +107,13 @@ class Order(models.Model):
         max_length=20,
         choices=ORDER_TYPE_CHOICES,
         default='B2C_READY_CASH'
+    )
+    emi_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        null=True, 
+        blank=True,
+        help_text="Amount to be collected per installment for EMI orders"
     )
     collection_frequency = models.CharField(
         max_length=10,

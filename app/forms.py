@@ -8,7 +8,7 @@ class OrderForm(forms.ModelForm):
         model = Order
         fields = [
             'customer', 'order_date', 'delivery_date', 
-            'order_type', 'collection_frequency', 
+            'order_type', 'emi_amount', 'collection_frequency', 
             'collection_day_of_week', 'collection_day_of_month',
             'remarks'
         ]
@@ -16,6 +16,7 @@ class OrderForm(forms.ModelForm):
             'order_date': forms.DateInput(attrs={'type': 'date'}),
             'delivery_date': forms.DateInput(attrs={'type': 'date'}),
             'order_type': forms.Select(attrs={'class': 'form-select', 'id': 'id_order_type'}),
+            'emi_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'id': 'id_emi_amount'}),
             'collection_frequency': forms.Select(attrs={'class': 'form-select', 'id': 'id_collection_frequency'}),
             'collection_day_of_week': forms.Select(attrs={'class': 'form-select', 'data-frequency': 'WEEKLY', 'id': 'id_collection_day_of_week'}),
             'collection_day_of_month': forms.NumberInput(attrs={
@@ -85,6 +86,11 @@ class BulkOrderForm(forms.Form):
     order_type = forms.ChoiceField(
         choices=Order.ORDER_TYPE_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    emi_amount = forms.DecimalField(
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'})
     )
     collection_frequency = forms.ChoiceField(
         choices=Order.COLLECTION_FREQUENCY_CHOICES,

@@ -97,6 +97,7 @@
                                     <th>Customer</th>
                                     <th>Due Date</th>
                                     <th>Amount</th>
+                                    <th>Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -108,7 +109,24 @@
                                     <td>
                                         <span class="text-danger">{{ order.next_payment_date }}</span>
                                     </td>
-                                    <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        {% if order.order_type in 'B2C_EMI,B2B_EMI' and order.emi_amount %}
+                                        ₹{{ order.emi_amount|floatformat:2 }}
+                                        {% else %}
+                                        ₹{{ order.total_amount|floatformat:2 }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.order_type == 'B2C_READY_CASH' %}
+                                        <span class="badge bg-primary">B2C Ready Cash</span>
+                                        {% elif order.order_type == 'B2C_EMI' %}
+                                        <span class="badge bg-info">B2C EMI</span>
+                                        {% elif order.order_type == 'B2B_READY_CASH' %}
+                                        <span class="badge bg-secondary">B2B Ready Cash</span>
+                                        {% elif order.order_type == 'B2B_EMI' %}
+                                        <span class="badge bg-dark">B2B EMI</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="{% url 'app:customer-payment-create' order.customer.id %}" class="btn btn-sm btn-outline-success">
@@ -122,7 +140,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="text-center">No overdue payments</td>
+                                    <td colspan="6" class="text-center">No overdue payments</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -146,6 +164,7 @@
                                     <th>Customer</th>
                                     <th>Due Date</th>
                                     <th>Amount</th>
+                                    <th>Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -157,7 +176,24 @@
                                     <td>
                                         <span class="text-warning">{{ order.next_payment_date }}</span>
                                     </td>
-                                    <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        {% if order.order_type in 'B2C_EMI,B2B_EMI' and order.emi_amount %}
+                                        ₹{{ order.emi_amount|floatformat:2 }}
+                                        {% else %}
+                                        ₹{{ order.total_amount|floatformat:2 }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.order_type == 'B2C_READY_CASH' %}
+                                        <span class="badge bg-primary">B2C Ready Cash</span>
+                                        {% elif order.order_type == 'B2C_EMI' %}
+                                        <span class="badge bg-info">B2C EMI</span>
+                                        {% elif order.order_type == 'B2B_READY_CASH' %}
+                                        <span class="badge bg-secondary">B2B Ready Cash</span>
+                                        {% elif order.order_type == 'B2B_EMI' %}
+                                        <span class="badge bg-dark">B2B EMI</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="{% url 'app:customer-payment-create' order.customer.id %}" class="btn btn-sm btn-outline-success">
@@ -171,7 +207,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="text-center">No payments due this week</td>
+                                    <td colspan="6" class="text-center">No payments due this week</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

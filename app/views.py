@@ -994,16 +994,96 @@ class DefaultersListView(LoginRequiredMixin, ListView):
             next_payment_date__isnull=False
         ).order_by('next_payment_date')
         
-        # Add those that are overdue (payment date has passed)
+        # Process overdue orders
         overdue_orders = upcoming_orders.filter(next_payment_date__lt=today)
-        context['overdue_orders'] = overdue_orders
+        processed_overdue = []
         
-        # Add those that are due soon (within the next 7 days)
+        for order in overdue_orders:
+            # Get all payments for this customer after order creation
+            payments_after_order = Payment.objects.filter(
+                customer=order.customer,
+                company=order.company,
+                created_at__gte=order.created_at
+            ).order_by('created_at')
+            
+            # Determine if this order has been paid
+            is_paid = False
+            payment_date = None
+            
+            if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
+                # For EMI orders, we look for payments that match the EMI amount
+                for payment in payments_after_order:
+                    if abs(payment.amount_received - order.emi_amount) < 1:  # Allow small difference
+                        is_paid = True
+                        payment_date = payment.payment_date
+                        break
+            else:
+                # For non-EMI orders, check if total payments cover the order total
+                total_paid = payments_after_order.aggregate(
+                    total=Sum('amount_received')
+                )['total'] or 0
+                
+                if total_paid >= order.total_amount:
+                    is_paid = True
+                    if payments_after_order.exists():
+                        payment_date = payments_after_order.latest('payment_date').payment_date
+            
+            # Add payment info to order
+            order.is_paid = is_paid
+            order.payment_date = payment_date
+            
+            # Only include unpaid orders in the overdue list
+            if not is_paid:
+                processed_overdue.append(order)
+        
+        # Process due soon orders
         due_soon = upcoming_orders.filter(
             next_payment_date__gte=today,
             next_payment_date__lte=today + timezone.timedelta(days=7)
         )
-        context['due_soon_orders'] = due_soon
+        processed_due_soon = []
+        
+        for order in due_soon:
+            # Get all payments for this customer after order creation
+            payments_after_order = Payment.objects.filter(
+                customer=order.customer,
+                company=order.company,
+                created_at__gte=order.created_at
+            ).order_by('created_at')
+            
+            # Determine if this order has been paid
+            is_paid = False
+            payment_date = None
+            
+            if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
+                # For EMI orders, we look for payments that match the EMI amount
+                for payment in payments_after_order:
+                    if abs(payment.amount_received - order.emi_amount) < 1:  # Allow small difference
+                        is_paid = True
+                        payment_date = payment.payment_date
+                        break
+            else:
+                # For non-EMI orders, check if total payments cover the order total
+                total_paid = payments_after_order.aggregate(
+                    total=Sum('amount_received')
+                )['total'] or 0
+                
+                if total_paid >= order.total_amount:
+                    is_paid = True
+                    if payments_after_order.exists():
+                        payment_date = payments_after_order.latest('payment_date').payment_date
+            
+            # Add payment info to order
+            order.is_paid = is_paid
+            order.payment_date = payment_date
+            
+            # Only include unpaid orders in the due soon list
+            if not is_paid:
+                processed_due_soon.append(order)
+        
+        context['overdue_orders'] = processed_overdue
+        context['due_soon_orders'] = processed_due_soon
+        context['today'] = today
         
         return context
 
@@ -1055,23 +1135,91 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
                 next_payment_date__lte=week_end
             )
             context['filter'] = 'next_week'
+        elif filter_by == 'paid':
+            # Show orders that have been paid
+            context['filter'] = 'paid'
+            # This will be handled below when we determine payment status
+        elif filter_by == 'unpaid':
+            # Show orders that have not been paid
+            context['filter'] = 'unpaid'
+            # This will be handled below when we determine payment status
         else:
             context['filter'] = 'all'
         
         # Group by customer
         grouped_orders = {}
+        total_paid_count = 0
+        total_unpaid_count = 0
+        
         for order in queryset:
             customer_id = order.customer.id
+            
+            # Initialize customer group if not exists
             if customer_id not in grouped_orders:
                 grouped_orders[customer_id] = {
                     'customer': order.customer,
                     'orders': [],
                     'total_due': 0
                 }
+            
+            # Get all payments for this customer after order creation
+            payments_after_order = Payment.objects.filter(
+                customer=order.customer,
+                company=order.company,
+                created_at__gte=order.created_at
+            ).order_by('created_at')
+            
+            # Determine if this order has been paid
+            # For EMI orders, check if any payment matches the EMI amount
+            # For other orders, check if total payments cover the order amount
+            is_paid = False
+            payment_date = None
+            
+            if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
+                # For EMI orders, we look for payments that match the EMI amount
+                # Check for a payment with approximately the same amount as EMI
+                for payment in payments_after_order:
+                    if abs(payment.amount_received - order.emi_amount) < 1:  # Allow small difference
+                        is_paid = True
+                        payment_date = payment.payment_date
+                        break
+            else:
+                # For non-EMI orders, check if total payments cover the order total
+                total_paid = payments_after_order.aggregate(
+                    total=Sum('amount_received')
+                )['total'] or 0
+                
+                if total_paid >= order.total_amount:
+                    is_paid = True
+                    if payments_after_order.exists():
+                        payment_date = payments_after_order.latest('payment_date').payment_date
+            
+            # Add payment information to the order object
+            order.is_paid = is_paid
+            order.payment_date = payment_date
+            
+            # Count paid vs unpaid orders
+            if is_paid:
+                total_paid_count += 1
+            else:
+                total_unpaid_count += 1
+            
+            # Apply paid/unpaid filter if specified
+            if (filter_by == 'paid' and not is_paid) or (filter_by == 'unpaid' and is_paid):
+                continue
+            
+            # Add order to the group
             grouped_orders[customer_id]['orders'].append(order)
-            grouped_orders[customer_id]['total_due'] += order.total_amount
+            # Only count unpaid orders towards total due
+            if not is_paid:
+                grouped_orders[customer_id]['total_due'] += order.total_amount
+        
+        # Remove customers with no matching orders after filtering
+        grouped_orders = {k: v for k, v in grouped_orders.items() if v['orders']}
         
         context['grouped_orders'] = grouped_orders.values()
+        context['total_paid'] = total_paid_count
+        context['total_unpaid'] = total_unpaid_count
         
         # Add statistics
         context['total_overdue'] = queryset.filter(next_payment_date__lt=today).count()
@@ -1088,17 +1236,30 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
     form_class = PaymentForm
     template_name = 'app/payment_form.html'
     success_url = reverse_lazy('app:payment-list')
-
+    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['company'] = self.request.user.company
         return kwargs
-
+    
     def get_initial(self):
         initial = super().get_initial()
         customer_id = self.kwargs.get('customer_id')
         if customer_id:
             initial['customer'] = customer_id
+            # Check if customer has EMI orders with pending payments
+            customer = Customer.objects.get(pk=customer_id)
+            emi_orders = Order.objects.filter(
+                customer=customer, 
+                emi_amount__isnull=False
+            ).filter(
+                Q(order_type='B2C_EMI') | Q(order_type='B2B_EMI')
+            ).order_by('-created_at')
+            
+            # If customer has EMI orders, pre-fill with the EMI amount of the most recent one
+            if emi_orders.exists():
+                recent_emi_order = emi_orders.first()
+                initial['amount_received'] = recent_emi_order.emi_amount
         return initial
 
     def get_success_url(self):
