@@ -9,6 +9,27 @@
             <h5 class="card-title mb-0">{% if form.instance.pk %}Edit{% else %}New{% endif %} Customer</h5>
         </div>
         <div class="card-body">
+            <!-- Tab navigation -->
+            {% if not form.instance.pk %}
+            <ul class="nav nav-tabs mb-4" id="customerTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab" aria-controls="manual" aria-selected="true">
+                        <i class="fas fa-user me-2"></i>Single Customer
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv" type="button" role="tab" aria-controls="csv" aria-selected="false">
+                        <i class="fas fa-file-csv me-2"></i>Bulk Import (CSV)
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="customerTabsContent">
+                <!-- Manual entry tab -->
+                <div class="tab-pane fade show active" id="manual" role="tabpanel" aria-labelledby="manual-tab">
+            {% endif %}
+            
+            <!-- Single customer form -->
             <form method="post" novalidate>
                 {% csrf_token %}
                 {% if form.non_field_errors %}
@@ -45,6 +66,53 @@
                     </a>
                 </div>
             </form>
+            
+            {% if not form.instance.pk %}
+                </div>
+                
+                <!-- CSV upload tab -->
+                <div class="tab-pane fade" id="csv" role="tabpanel" aria-labelledby="csv-tab">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Upload a CSV file to import multiple customers at once. The CSV file must include the following columns: 
+                        <code>name</code>, <code>address</code>, <code>mobile1</code>, <code>location</code>. 
+                        Optional columns: <code>mobile2</code>, <code>id_number</code>, <code>initial_balance</code>.
+                    </div>
+                    
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% for field in csv_form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.errors %}
+                            <div class="alert alert-danger py-1">
+                                {% for error in field.errors %}
+                                <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text text-muted">{{ field.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-2"></i>Upload and Import
+                            </button>
+                            <a href="{% url 'app:customer-csv-template' %}" class="btn btn-outline-success">
+                                <i class="fas fa-download me-2"></i>Download Sample CSV
+                            </a>
+                            <a href="{% url 'app:customer-list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -1,20 +1,32 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy, reverse
-from .models import Customer, Order, OrderItem, Payment, Item, CustomerItemPrice, OrderTemplate, OrderTemplateItem
-from django.db.models import Sum, Count, F, Q, Max, DecimalField, ExpressionWrapper, Value
-from django.db.models.functions import Coalesce, Cast
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db import transaction
-from .forms import OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.db.models import Sum, F, Q, ExpressionWrapper, DecimalField, Value, Count, Max
+from django.db.models.functions import Coalesce
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
+
 import json
+import csv
+import io
 import pandas as pd
+from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from .utils import calculate_total_orders_amount, calculate_total_payments, calculate_customer_balance, calculate_total_initial_balance
+
+from accounts.models import Company
+from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem
+from .forms import (
+    OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, 
+    OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm, CustomerCSVUploadForm
+)
+from .utils import (
+    calculate_total_orders_amount, calculate_total_payments, 
+    calculate_customer_balance, calculate_total_initial_balance
+)
 
 @login_required
 def home(request):
@@ -513,17 +525,126 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
         })
         return context
 
+# Helper function to generate sample CSV
+def generate_sample_customer_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    # Write header
+    writer.writerow(['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 'initial_balance'])
+    # Write sample data
+    writer.writerow(['John Doe', '123 Main St, Anytown', '9876543210', '9876543211', 'North', 'ID12345', '1000.00'])
+    writer.writerow(['Jane Smith', '456 Park Ave, Sometown', '8765432100', '', 'South', 'ID67890', '500.00'])
+    
+    return output.getvalue()
+
+# Helper function to process CSV and create customers
+def process_customer_csv(csv_file, company):
+    """Process a CSV file and create customer records."""
+    decoded_file = csv_file.read().decode('utf-8')
+    io_string = io.StringIO(decoded_file)
+    reader = csv.DictReader(io_string)
+    
+    customers_created = 0
+    errors = []
+    
+    for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header row
+        try:
+            # Validate required fields
+            if not row.get('name') or not row.get('address') or not row.get('mobile1') or not row.get('location'):
+                errors.append(f"Row {row_num}: Missing required fields")
+                continue
+            
+            # Parse initial balance with fallback to 0
+            initial_balance = Decimal('0.00')
+            if row.get('initial_balance'):
+                try:
+                    initial_balance = Decimal(str(row.get('initial_balance', '0.00')))
+                except (ValueError, TypeError, Decimal.InvalidOperation):
+                    errors.append(f"Row {row_num}: Invalid initial balance value")
+                    continue
+            
+            # Create customer object
+            Customer.objects.create(
+                company=company,
+                name=row.get('name', ''),
+                address=row.get('address', ''),
+                mobile1=row.get('mobile1', ''),
+                mobile2=row.get('mobile2', ''),
+                location=row.get('location', ''),
+                id_number=row.get('id_number', ''),
+                initial_balance=initial_balance
+            )
+            customers_created += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_num}: {str(e)}")
+    
+    return customers_created, errors
+
+@login_required
+def download_customer_csv_template(request):
+    """Download a sample CSV template for customer import."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="customer_template.csv"'
+    
+    # Generate sample CSV content
+    response.write(generate_sample_customer_csv())
+    
+    return response
+
 class CustomerCreateView(LoginRequiredMixin, CreateView):
     """View for creating a new customer."""
     model = Customer
     form_class = CustomerForm
     template_name = 'app/customer_form.html'
     success_url = reverse_lazy('app:customer-list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['csv_form'] = CustomerCSVUploadForm()
+        return context
 
     def form_valid(self, form):
         form.instance.company = self.request.user.company
         messages.success(self.request, "Customer created successfully.")
         return super().form_valid(form)
+
+    def post(self, request, *args, **kwargs):
+        # Check if it's a CSV upload
+        if 'csv_file' in request.FILES:
+            form = CustomerCSVUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                csv_file = request.FILES['csv_file']
+                
+                # Validate file is a CSV
+                if not csv_file.name.endswith('.csv'):
+                    messages.error(request, "File must be a CSV")
+                    return self.get(request, *args, **kwargs)
+                
+                # Process the CSV file
+                try:
+                    customers_created, errors = process_customer_csv(csv_file, request.user.company)
+                    
+                    if errors:
+                        for error in errors[:10]:  # Show first 10 errors
+                            messages.warning(request, error)
+                        
+                        if len(errors) > 10:
+                            messages.warning(request, f"...and {len(errors) - 10} more errors")
+                    
+                    if customers_created > 0:
+                        messages.success(request, f"{customers_created} customers imported successfully")
+                        return redirect(self.success_url)
+                    else:
+                        messages.error(request, "No customers were imported. Please check the format and try again.")
+                
+                except Exception as e:
+                    messages.error(request, f"Error processing file: {str(e)}")
+            
+            return self.get(request, *args, **kwargs)
+        
+        # Otherwise, proceed with normal form submission
+        return super().post(request, *args, **kwargs)
 
 # Order Views
 class OrderListView(LoginRequiredMixin, ListView):

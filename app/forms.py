@@ -121,4 +121,11 @@ class CustomerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['initial_balance'].help_text = 'Enter any existing balance the customer owes from before using this system.'
-        self.fields['initial_balance'].label = 'Initial Outstanding Balance' 
+        self.fields['initial_balance'].label = 'Initial Outstanding Balance'
+
+class CustomerCSVUploadForm(forms.Form):
+    csv_file = forms.FileField(
+        label='Upload CSV File',
+        help_text='CSV file should contain columns: name, address, mobile1, mobile2, location, id_number, initial_balance',
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.csv'})
+    ) 
