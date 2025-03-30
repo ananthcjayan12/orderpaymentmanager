@@ -107,7 +107,11 @@ class PaymentForm(forms.ModelForm):
 class CustomerForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 'initial_balance']
+        fields = [
+            'name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 
+            'customer_type', 'collection_frequency', 'collection_day_of_week', 
+            'collection_day_of_month', 'initial_balance'
+        ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Address'}),
@@ -115,6 +119,15 @@ class CustomerForm(forms.ModelForm):
             'mobile2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Secondary Mobile (Optional)'}),
             'location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Location'}),
             'id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID Number (Optional)'}),
+            'customer_type': forms.Select(attrs={'class': 'form-select'}),
+            'collection_frequency': forms.Select(attrs={'class': 'form-select'}),
+            'collection_day_of_week': forms.Select(attrs={'class': 'form-select', 'data-frequency': 'WEEKLY'}),
+            'collection_day_of_month': forms.NumberInput(attrs={
+                'class': 'form-control', 
+                'min': '1', 
+                'max': '31',
+                'data-frequency': 'MONTHLY'
+            }),
             'initial_balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Initial Outstanding Balance'})
         }
 
@@ -122,6 +135,10 @@ class CustomerForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['initial_balance'].help_text = 'Enter any existing balance the customer owes from before using this system.'
         self.fields['initial_balance'].label = 'Initial Outstanding Balance'
+        self.fields['customer_type'].help_text = 'Select the type of customer relationship'
+        self.fields['collection_frequency'].help_text = 'Set a regular collection schedule if applicable'
+        self.fields['collection_day_of_week'].help_text = 'Select the day of the week for weekly collections'
+        self.fields['collection_day_of_month'].help_text = 'Enter the day of month (1-31) for monthly collections'
 
 class CustomerCSVUploadForm(forms.Form):
     csv_file = forms.FileField(

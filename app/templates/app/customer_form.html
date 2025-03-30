@@ -40,30 +40,192 @@
                 </div>
                 {% endif %}
                 
-                {% for field in form %}
-                <div class="mb-3">
-                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                    {% if field.errors %}
-                    <div class="alert alert-danger py-1">
-                        {% for error in field.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                <!-- Basic Information -->
+                <h6 class="mt-3 mb-3 fw-bold">Basic Information</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                        {% if form.name.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.name.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.name }}
+                        {% if form.name.help_text %}
+                        <div class="form-text text-muted">{{ form.name.help_text }}</div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                    {{ field }}
-                    {% if field.help_text %}
-                    <div class="form-text text-muted">{{ field.help_text }}</div>
-                    {% endif %}
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }}</label>
+                        {% if form.location.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.location.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.location }}
+                        {% if form.location.help_text %}
+                        <div class="form-text text-muted">{{ form.location.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.mobile1.id_for_label }}" class="form-label">{{ form.mobile1.label }}</label>
+                        {% if form.mobile1.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.mobile1.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.mobile1 }}
+                        {% if form.mobile1.help_text %}
+                        <div class="form-text text-muted">{{ form.mobile1.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.mobile2.id_for_label }}" class="form-label">{{ form.mobile2.label }}</label>
+                        {% if form.mobile2.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.mobile2.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.mobile2 }}
+                        {% if form.mobile2.help_text %}
+                        <div class="form-text text-muted">{{ form.mobile2.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.id_number.id_for_label }}" class="form-label">{{ form.id_number.label }}</label>
+                        {% if form.id_number.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.id_number.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.id_number }}
+                        {% if form.id_number.help_text %}
+                        <div class="form-text text-muted">{{ form.id_number.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">{{ form.address.label }}</label>
+                        {% if form.address.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.address.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.address }}
+                        {% if form.address.help_text %}
+                        <div class="form-text text-muted">{{ form.address.help_text }}</div>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endfor %}
                 
-                <div class="d-flex gap-2">
+                <!-- Customer Type and Collection Settings -->
+                <h6 class="mt-4 mb-3 fw-bold">Customer Type & Collection Settings</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.customer_type.id_for_label }}" class="form-label">{{ form.customer_type.label }}</label>
+                        {% if form.customer_type.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.customer_type.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.customer_type }}
+                        {% if form.customer_type.help_text %}
+                        <div class="form-text text-muted">{{ form.customer_type.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.initial_balance.id_for_label }}" class="form-label">{{ form.initial_balance.label }}</label>
+                        {% if form.initial_balance.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.initial_balance.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.initial_balance }}
+                        {% if form.initial_balance.help_text %}
+                        <div class="form-text text-muted">{{ form.initial_balance.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.collection_frequency.id_for_label }}" class="form-label">{{ form.collection_frequency.label }}</label>
+                        {% if form.collection_frequency.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.collection_frequency.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.collection_frequency }}
+                        {% if form.collection_frequency.help_text %}
+                        <div class="form-text text-muted">{{ form.collection_frequency.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3 collection-day-field" id="weekly-collection-div">
+                        <label for="{{ form.collection_day_of_week.id_for_label }}" class="form-label">{{ form.collection_day_of_week.label }}</label>
+                        {% if form.collection_day_of_week.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.collection_day_of_week.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.collection_day_of_week }}
+                        {% if form.collection_day_of_week.help_text %}
+                        <div class="form-text text-muted">{{ form.collection_day_of_week.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3 collection-day-field" id="monthly-collection-div">
+                        <label for="{{ form.collection_day_of_month.id_for_label }}" class="form-label">{{ form.collection_day_of_month.label }}</label>
+                        {% if form.collection_day_of_month.errors %}
+                        <div class="alert alert-danger py-1">
+                            {% for error in form.collection_day_of_month.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ form.collection_day_of_month }}
+                        {% if form.collection_day_of_month.help_text %}
+                        <div class="form-text text-muted">{{ form.collection_day_of_month.help_text }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2 mt-4">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save me-2"></i>Save Customer
                     </button>
+                    {% if form.instance.pk %}
+                    <a href="{% url 'app:customer-detail' form.instance.pk %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    {% else %}
                     <a href="{% url 'app:customer-list' %}" class="btn btn-outline-secondary">
                         <i class="fas fa-times me-2"></i>Cancel
                     </a>
+                    {% endif %}
                 </div>
             </form>
             
@@ -74,9 +236,30 @@
                 <div class="tab-pane fade" id="csv" role="tabpanel" aria-labelledby="csv-tab">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Upload a CSV file to import multiple customers at once. The CSV file must include the following columns: 
-                        <code>name</code>, <code>address</code>, <code>mobile1</code>, <code>location</code>. 
-                        Optional columns: <code>mobile2</code>, <code>id_number</code>, <code>initial_balance</code>.
+                        <h6>CSV Import Instructions</h6>
+                        
+                        <p>Upload a CSV file to import multiple customers at once.</p>
+                        
+                        <strong>Required columns:</strong>
+                        <ul>
+                            <li><code>name</code> - Customer's full name</li>
+                            <li><code>address</code> - Complete address</li>
+                            <li><code>mobile1</code> - Primary contact number</li>
+                            <li><code>location</code> - Area/district</li>
+                        </ul>
+                        
+                        <strong>Optional columns:</strong>
+                        <ul>
+                            <li><code>mobile2</code> - Secondary contact number</li>
+                            <li><code>id_number</code> - Customer identification number</li> 
+                            <li><code>initial_balance</code> - Initial outstanding balance (default: 0)</li>
+                            <li><code>customer_type</code> - Customer category (B2C_READY_CASH, B2C_EMI, or B2B; default: B2C_READY_CASH)</li>
+                            <li><code>collection_frequency</code> - Schedule for collections (NONE, WEEKLY, or MONTHLY; default: NONE)</li>
+                            <li><code>collection_day_of_week</code> - Day for weekly collections (0-6, where 0 = Monday)</li>
+                            <li><code>collection_day_of_month</code> - Day for monthly collections (1-31)</li>
+                        </ul>
+                        
+                        <p class="mb-0"><strong>Tip:</strong> Download the sample CSV template below to see the correct format.</p>
                     </div>
                     
                     <form method="post" enctype="multipart/form-data">
@@ -116,4 +299,38 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to toggle collection day fields based on collection frequency
+    function updateCollectionFields() {
+        const frequency = document.getElementById('id_collection_frequency').value;
+        const weeklyField = document.getElementById('weekly-collection-div');
+        const monthlyField = document.getElementById('monthly-collection-div');
+        
+        if (frequency === 'WEEKLY') {
+            weeklyField.style.display = 'block';
+            monthlyField.style.display = 'none';
+        } else if (frequency === 'MONTHLY') {
+            weeklyField.style.display = 'none';
+            monthlyField.style.display = 'block';
+        } else {
+            // NONE option
+            weeklyField.style.display = 'none';
+            monthlyField.style.display = 'none';
+        }
+    }
+    
+    // Initial setup
+    updateCollectionFields();
+    
+    // Add event listener for changes to the collection frequency
+    const frequencySelect = document.getElementById('id_collection_frequency');
+    if (frequencySelect) {
+        frequencySelect.addEventListener('change', updateCollectionFields);
+    }
+});
+</script>
+{% endblock %}
 {% endblock %} 

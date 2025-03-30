@@ -4,9 +4,32 @@ from django.utils import timezone
 from django.db.models import Sum, F
 from accounts.models import Company
 from .utils import calculate_total_orders_amount, calculate_total_payments, calculate_customer_balance
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Customer(models.Model):
     """Model for customers."""
+    CUSTOMER_TYPE_CHOICES = [
+        ('B2C_READY_CASH', 'B2C Ready Cash'),
+        ('B2C_EMI', 'B2C EMI'),
+        ('B2B', 'B2B'),
+    ]
+    
+    COLLECTION_FREQUENCY_CHOICES = [
+        ('NONE', 'No Regular Collection'),
+        ('WEEKLY', 'Weekly'),
+        ('MONTHLY', 'Monthly'),
+    ]
+    
+    WEEKDAY_CHOICES = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    
     company = models.ForeignKey(
         Company,
         on_delete=models.CASCADE,
@@ -19,6 +42,28 @@ class Customer(models.Model):
     location = models.CharField(max_length=100)
     id_number = models.CharField(max_length=50, blank=True, null=True)
     initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    customer_type = models.CharField(
+        max_length=20,
+        choices=CUSTOMER_TYPE_CHOICES,
+        default='B2C_READY_CASH'
+    )
+    collection_frequency = models.CharField(
+        max_length=10,
+        choices=COLLECTION_FREQUENCY_CHOICES,
+        default='NONE'
+    )
+    collection_day_of_week = models.IntegerField(
+        choices=WEEKDAY_CHOICES,
+        null=True,
+        blank=True,
+        help_text='Day of the week for weekly collections'
+    )
+    collection_day_of_month = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text='Day of the month for monthly collections (1-31)'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

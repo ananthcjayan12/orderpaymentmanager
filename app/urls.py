@@ -11,6 +11,8 @@ urlpatterns = [
     path('customers/', views.CustomerListView.as_view(), name='customer-list'),
     path('customers/create/', views.CustomerCreateView.as_view(), name='customer-create'),
     path('customers/<int:pk>/', views.CustomerDetailView.as_view(), name='customer-detail'),
+    path('customers/<int:pk>/update/', views.CustomerUpdateView.as_view(), name='customer-update'),
+    path('customers/<int:pk>/delete/', views.customer_delete, name='customer-delete'),
     path('customers/csv-template/', views.download_customer_csv_template, name='customer-csv-template'),
     
     # Orders

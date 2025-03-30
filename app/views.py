@@ -529,11 +529,25 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
 def generate_sample_customer_csv():
     output = io.StringIO()
     writer = csv.writer(output)
-    # Write header
-    writer.writerow(['name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 'initial_balance'])
-    # Write sample data
-    writer.writerow(['John Doe', '123 Main St, Anytown', '9876543210', '9876543211', 'North', 'ID12345', '1000.00'])
-    writer.writerow(['Jane Smith', '456 Park Ave, Sometown', '8765432100', '', 'South', 'ID67890', '500.00'])
+    # Write header with new fields
+    writer.writerow([
+        'name', 'address', 'mobile1', 'mobile2', 'location', 'id_number', 
+        'initial_balance', 'customer_type', 'collection_frequency', 
+        'collection_day_of_week', 'collection_day_of_month'
+    ])
+    # Write sample data with new fields
+    writer.writerow([
+        'John Doe', '123 Main St, Anytown', '9876543210', '9876543211', 
+        'North', 'ID12345', '1000.00', 'B2C_READY_CASH', 'WEEKLY', '1', ''
+    ])
+    writer.writerow([
+        'Jane Smith', '456 Park Ave, Sometown', '8765432100', '', 
+        'South', 'ID67890', '500.00', 'B2C_EMI', 'MONTHLY', '', '15'
+    ])
+    writer.writerow([
+        'ABC Company', '789 Business Park, Downtown', '7654321000', '7654321001', 
+        'Central', 'COMP123', '2000.00', 'B2B', 'NONE', '', ''
+    ])
     
     return output.getvalue()
 
@@ -547,11 +561,15 @@ def process_customer_csv(csv_file, company):
     customers_created = 0
     errors = []
     
+    required_fields = ['name', 'address', 'mobile1', 'location']
+    
     for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header row
         try:
-            # Validate required fields
-            if not row.get('name') or not row.get('address') or not row.get('mobile1') or not row.get('location'):
-                errors.append(f"Row {row_num}: Missing required fields")
+            # Check for missing required fields and specify which ones
+            missing_fields = [field for field in required_fields if not row.get(field)]
+            if missing_fields:
+                fields_str = ", ".join([f"`{field}`" for field in missing_fields])
+                errors.append(f"Row {row_num}: Missing required fields: {fields_str}")
                 continue
             
             # Parse initial balance with fallback to 0
@@ -563,7 +581,39 @@ def process_customer_csv(csv_file, company):
                     errors.append(f"Row {row_num}: Invalid initial balance value")
                     continue
             
-            # Create customer object
+            # Parse customer_type with fallback to default
+            customer_type = row.get('customer_type', 'B2C_READY_CASH')
+            if customer_type not in [choice[0] for choice in Customer.CUSTOMER_TYPE_CHOICES]:
+                customer_type = 'B2C_READY_CASH'  # Default if invalid
+            
+            # Parse collection_frequency with fallback to default
+            collection_frequency = row.get('collection_frequency', 'NONE')
+            if collection_frequency not in [choice[0] for choice in Customer.COLLECTION_FREQUENCY_CHOICES]:
+                collection_frequency = 'NONE'  # Default if invalid
+            
+            # Parse collection day fields
+            collection_day_of_week = None
+            collection_day_of_month = None
+            
+            if collection_frequency == 'WEEKLY' and row.get('collection_day_of_week'):
+                try:
+                    day_of_week = int(row.get('collection_day_of_week'))
+                    if 0 <= day_of_week <= 6:  # Valid weekday range
+                        collection_day_of_week = day_of_week
+                except (ValueError, TypeError):
+                    # Invalid value, but not critical - just leave as None
+                    pass
+            
+            if collection_frequency == 'MONTHLY' and row.get('collection_day_of_month'):
+                try:
+                    day_of_month = int(row.get('collection_day_of_month'))
+                    if 1 <= day_of_month <= 31:  # Valid day of month range
+                        collection_day_of_month = day_of_month
+                except (ValueError, TypeError):
+                    # Invalid value, but not critical - just leave as None
+                    pass
+            
+            # Create customer object with new fields
             Customer.objects.create(
                 company=company,
                 name=row.get('name', ''),
@@ -572,7 +622,11 @@ def process_customer_csv(csv_file, company):
                 mobile2=row.get('mobile2', ''),
                 location=row.get('location', ''),
                 id_number=row.get('id_number', ''),
-                initial_balance=initial_balance
+                initial_balance=initial_balance,
+                customer_type=customer_type,
+                collection_frequency=collection_frequency,
+                collection_day_of_week=collection_day_of_week,
+                collection_day_of_month=collection_day_of_month
             )
             customers_created += 1
             
@@ -618,7 +672,7 @@ class CustomerCreateView(LoginRequiredMixin, CreateView):
                 
                 # Validate file is a CSV
                 if not csv_file.name.endswith('.csv'):
-                    messages.error(request, "File must be a CSV")
+                    messages.error(request, "The uploaded file must be a CSV file (.csv extension).")
                     return self.get(request, *args, **kwargs)
                 
                 # Process the CSV file
@@ -626,25 +680,97 @@ class CustomerCreateView(LoginRequiredMixin, CreateView):
                     customers_created, errors = process_customer_csv(csv_file, request.user.company)
                     
                     if errors:
-                        for error in errors[:10]:  # Show first 10 errors
-                            messages.warning(request, error)
-                        
-                        if len(errors) > 10:
-                            messages.warning(request, f"...and {len(errors) - 10} more errors")
+                        # If all rows have errors, group common errors together
+                        if len(errors) > 5 and all(error.startswith("Row") and "Missing required fields" in error for error in errors[:5]):
+                            # Check for pattern of missing the same fields
+                            field_pattern = errors[0].split("Missing required fields: ")[1] if len(errors) > 0 else ""
+                            if all(field_pattern in error for error in errors[:5]):
+                                messages.warning(
+                                    request, 
+                                    f"Multiple rows are missing the same required fields: {field_pattern}. "
+                                    f"Please check your CSV column headers and ensure they match the expected format."
+                                )
+                                messages.info(
+                                    request,
+                                    f"Download the sample CSV template for reference. "
+                                    f"Required fields are: name, address, mobile1, and location."
+                                )
+                            else:
+                                # Show the first 5 errors
+                                for error in errors[:5]:
+                                    messages.warning(request, error)
+                                
+                                if len(errors) > 5:
+                                    messages.warning(request, f"...and {len(errors) - 5} more errors. Please check your CSV file format.")
+                        else:
+                            # Show specific errors (limited to first 5)
+                            for error in errors[:5]:
+                                messages.warning(request, error)
+                            
+                            if len(errors) > 5:
+                                messages.warning(request, f"...and {len(errors) - 5} more errors")
                     
                     if customers_created > 0:
                         messages.success(request, f"{customers_created} customers imported successfully")
                         return redirect(self.success_url)
                     else:
-                        messages.error(request, "No customers were imported. Please check the format and try again.")
+                        messages.error(
+                            request, 
+                            "No customers were imported. Please check that your CSV file has the correct format "
+                            "and contains valid data. Download the sample template for reference."
+                        )
                 
                 except Exception as e:
                     messages.error(request, f"Error processing file: {str(e)}")
+                    messages.info(request, "Try downloading the sample template for the correct format.")
+            else:
+                # Form validation error
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
             
             return self.get(request, *args, **kwargs)
         
         # Otherwise, proceed with normal form submission
         return super().post(request, *args, **kwargs)
+
+class CustomerUpdateView(LoginRequiredMixin, UpdateView):
+    """View for updating an existing customer."""
+    model = Customer
+    form_class = CustomerForm
+    template_name = 'app/customer_form.html'
+    
+    def get_queryset(self):
+        """Filter customers by company."""
+        return Customer.objects.filter(company=self.request.user.company)
+    
+    def get_success_url(self):
+        """Return to customer detail view after successful update."""
+        return reverse_lazy('app:customer-detail', kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Customer '{self.object.name}' updated successfully.")
+        return super().form_valid(form)
+
+@login_required
+def customer_delete(request, pk):
+    """Delete a customer and all associated data."""
+    customer = get_object_or_404(Customer, pk=pk, company=request.user.company)
+    
+    if request.method == 'POST':
+        name = customer.name
+        try:
+            # Use transaction to ensure all related data is deleted properly
+            with transaction.atomic():
+                customer.delete()
+                messages.success(request, f"Customer '{name}' has been deleted successfully.")
+                return redirect('app:customer-list')
+        except Exception as e:
+            messages.error(request, f"Error deleting customer: {str(e)}")
+            return redirect('app:customer-detail', pk=pk)
+    
+    # If it's not a POST request, redirect to the detail page
+    return redirect('app:customer-detail', pk=pk)
 
 # Order Views
 class OrderListView(LoginRequiredMixin, ListView):

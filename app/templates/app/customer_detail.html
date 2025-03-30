@@ -15,6 +15,12 @@
                     <a href="{% url 'app:customer-payment-create' customer.pk %}" class="btn btn-success">
                         <i class="fas fa-money-bill me-2"></i>Record Payment
                     </a>
+                    <a href="{% url 'app:customer-update' customer.pk %}" class="btn btn-warning">
+                        <i class="fas fa-edit me-2"></i>Edit Customer
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteCustomerModal">
+                        <i class="fas fa-trash-alt me-2"></i>Delete
+                    </button>
                 </div>
             </div>
         </div>
@@ -30,6 +36,35 @@
                         
                         <dt class="col-sm-4">Location</dt>
                         <dd class="col-sm-8">{{ customer.location|default:"-" }}</dd>
+
+                        <dt class="col-sm-4">Customer Type</dt>
+                        <dd class="col-sm-8">
+                            {% if customer.customer_type == 'B2C_READY_CASH' %}
+                                <span class="badge bg-primary">B2C Ready Cash</span>
+                            {% elif customer.customer_type == 'B2C_EMI' %}
+                                <span class="badge bg-info">B2C EMI</span>
+                            {% elif customer.customer_type == 'B2B' %}
+                                <span class="badge bg-secondary">B2B</span>
+                            {% endif %}
+                        </dd>
+                        
+                        {% if customer.collection_frequency != 'NONE' %}
+                        <dt class="col-sm-4">Collection</dt>
+                        <dd class="col-sm-8">
+                            {% if customer.collection_frequency == 'WEEKLY' %}
+                                Weekly on 
+                                {% if customer.collection_day_of_week == 0 %}Monday{% endif %}
+                                {% if customer.collection_day_of_week == 1 %}Tuesday{% endif %}
+                                {% if customer.collection_day_of_week == 2 %}Wednesday{% endif %}
+                                {% if customer.collection_day_of_week == 3 %}Thursday{% endif %}
+                                {% if customer.collection_day_of_week == 4 %}Friday{% endif %}
+                                {% if customer.collection_day_of_week == 5 %}Saturday{% endif %}
+                                {% if customer.collection_day_of_week == 6 %}Sunday{% endif %}
+                            {% elif customer.collection_frequency == 'MONTHLY' %}
+                                Monthly on day {{ customer.collection_day_of_month }}
+                            {% endif %}
+                        </dd>
+                        {% endif %}
                     </dl>
                 </div>
                 <div class="col-md-6">
@@ -125,6 +160,35 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Customer Modal -->
+<div class="modal fade" id="deleteCustomerModal" tabindex="-1" aria-labelledby="deleteCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCustomerModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ customer.name }}</strong>?</p>
+                {% if orders.count > 0 or payments.count > 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This customer has {{ orders.count }} orders and {{ payments.count }} payments. 
+                    Deleting this customer will also delete all associated orders and payments.
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{% url 'app:customer-delete' customer.pk %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Customer</button>
+                </form>
             </div>
         </div>
     </div>
