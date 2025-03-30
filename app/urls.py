@@ -49,4 +49,8 @@ urlpatterns = [
     # API endpoints
     path('api/customer/<int:customer_id>/items/', views.get_customer_items, name='customer-items'),
     path('api/items/create/', views.create_item, name='item-create'),
+    
+    # Add these new URL patterns
+    path('defaulters/', views.DefaultersListView.as_view(), name='defaulters-list'),
+    path('upcoming-payments/', views.UpcomingPaymentsView.as_view(), name='upcoming-payments'),
 ] 

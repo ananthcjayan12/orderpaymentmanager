@@ -202,6 +202,52 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Payment Settings Section -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <h5 class="mb-0">Payment Settings</h5>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.order_type.id_for_label }}" class="form-label">Order Type *</label>
+                            {{ form.order_type }}
+                            {{ form.order_type.errors }}
+                            <small class="form-text text-muted">{{ form.order_type.help_text }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.collection_frequency.id_for_label }}" class="form-label">Collection Frequency *</label>
+                            {{ form.collection_frequency }}
+                            {{ form.collection_frequency.errors }}
+                            <small class="form-text text-muted">{{ form.collection_frequency.help_text }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
+                        <div class="form-group" id="weekly_collection_container">
+                            <label for="{{ form.collection_day_of_week.id_for_label }}" class="form-label">Collection Day (Weekly)</label>
+                            {{ form.collection_day_of_week }}
+                            {{ form.collection_day_of_week.errors }}
+                            <small class="form-text text-muted">{{ form.collection_day_of_week.help_text }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group" id="monthly_collection_container">
+                            <label for="{{ form.collection_day_of_month.id_for_label }}" class="form-label">Collection Day (Monthly)</label>
+                            {{ form.collection_day_of_month }}
+                            {{ form.collection_day_of_month.errors }}
+                            <small class="form-text text-muted">{{ form.collection_day_of_month.help_text }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Items Section -->
         <div class="form-section">
@@ -371,6 +417,35 @@
         $('#id_order_date').addClass('form-control');
         $('#id_delivery_date').addClass('form-control');
         $('#id_remarks').addClass('form-control').attr('rows', '3').attr('placeholder', 'Any additional notes about this order');
+        
+        // Initialize payment settings controls
+        $('#id_order_type').addClass('form-select');
+        $('#id_collection_frequency').addClass('form-select');
+        $('#id_collection_day_of_week').addClass('form-select');
+        $('#id_collection_day_of_month').addClass('form-control').attr('min', '1').attr('max', '31');
+        
+        // Function to toggle collection day fields based on frequency
+        function toggleCollectionDayFields() {
+            const frequency = $('#id_collection_frequency').val();
+            
+            if (frequency === 'WEEKLY') {
+                $('#weekly_collection_container').show();
+                $('#monthly_collection_container').hide();
+            } else if (frequency === 'MONTHLY') {
+                $('#weekly_collection_container').hide();
+                $('#monthly_collection_container').show();
+            } else {
+                // If NONE or any other value
+                $('#weekly_collection_container').hide();
+                $('#monthly_collection_container').hide();
+            }
+        }
+        
+        // Initial toggle of collection fields
+        toggleCollectionDayFields();
+        
+        // Listen for changes to collection frequency
+        $('#id_collection_frequency').on('change', toggleCollectionDayFields);
         
         // Initialize Select2 for customer dropdown with search
         $('#id_customer').select2({
@@ -732,6 +807,33 @@
             // Check customer
             if (!$('#id_customer').val()) {
                 alert('Please select a customer');
+                isValid = false;
+                return false;
+            }
+            
+            // Check required payment settings
+            if (!$('#id_order_type').val()) {
+                alert('Please select an order type');
+                isValid = false;
+                return false;
+            }
+            
+            // Validate collection frequency and related fields
+            const frequency = $('#id_collection_frequency').val();
+            if (!frequency) {
+                alert('Please select a collection frequency');
+                isValid = false;
+                return false;
+            }
+            
+            if (frequency === 'WEEKLY' && !$('#id_collection_day_of_week').val()) {
+                alert('Please select a collection day of the week');
+                isValid = false;
+                return false;
+            }
+            
+            if (frequency === 'MONTHLY' && !$('#id_collection_day_of_month').val()) {
+                alert('Please enter a collection day of the month');
                 isValid = false;
                 return false;
             }

@@ -194,6 +194,18 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{% url 'app:defaulters-list' %}" class="nav-link {% if '/defaulters/' in request.path %}active{% endif %}">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Defaulters</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'app:upcoming-payments' %}" class="nav-link {% if '/upcoming-payments/' in request.path %}active{% endif %}">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Upcoming Payments</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{% url 'app:bank-list' %}" class="nav-link {% if '/banks/' in request.path %}active{% endif %}">
                         <i class="fas fa-university"></i>
                         <span>Payment Accounts</span>

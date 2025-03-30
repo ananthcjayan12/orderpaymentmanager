@@ -1,0 +1,160 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Upcoming Payments - Order Manager{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Upcoming Payments</h5>
+                        <div>
+                            <a href="{% url 'app:defaulters-list' %}" class="btn btn-outline-danger me-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i> View Defaulters
+                            </a>
+                            <a href="{% url 'app:payment-create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> Record Payment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="mb-3 mb-md-0">
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'app:upcoming-payments' %}?filter=all" class="btn btn-sm {% if filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                            All
+                                        </a>
+                                        <a href="{% url 'app:upcoming-payments' %}?filter=overdue" class="btn btn-sm {% if filter == 'overdue' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                            Overdue <span class="badge bg-light text-dark">{{ total_overdue }}</span>
+                                        </a>
+                                        <a href="{% url 'app:upcoming-payments' %}?filter=this_week" class="btn btn-sm {% if filter == 'this_week' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                            This Week <span class="badge bg-light text-dark">{{ total_due_this_week }}</span>
+                                        </a>
+                                        <a href="{% url 'app:upcoming-payments' %}?filter=next_week" class="btn btn-sm {% if filter == 'next_week' %}btn-info{% else %}btn-outline-info{% endif %}">
+                                            Next Week
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        {% for group in grouped_orders %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">{{ group.customer.name }}</h5>
+                                        <span class="badge bg-primary">₹{{ group.total_due|floatformat:2 }}</span>
+                                    </div>
+                                    <small class="text-muted">{{ group.customer.mobile1 }}</small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Order #</th>
+                                                    <th>Due Date</th>
+                                                    <th>Amount</th>
+                                                    <th>Type</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for order in group.orders %}
+                                                <tr>
+                                                    <td># {{ order.id }}</td>
+                                                    <td>
+                                                        {% if order.next_payment_date < today %}
+                                                        <span class="text-danger">{{ order.next_payment_date }}</span>
+                                                        {% else %}
+                                                        {{ order.next_payment_date }}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>₹{{ order.total_amount|floatformat:2 }}</td>
+                                                    <td>
+                                                        {% if order.order_type == 'B2C_READY_CASH' %}
+                                                        <span class="badge bg-primary">Ready Cash</span>
+                                                        {% elif order.order_type == 'B2C_EMI' %}
+                                                        <span class="badge bg-info">EMI</span>
+                                                        {% else %}
+                                                        <span class="badge bg-secondary">B2B</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group">
+                                                            <a href="{% url 'app:customer-payment-create' order.customer.id %}" class="btn btn-sm btn-outline-success">
+                                                                <i class="fas fa-money-bill-wave"></i>
+                                                            </a>
+                                                            <a href="{% url 'app:order-detail' order.id %}" class="btn btn-sm btn-outline-primary">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-calendar-alt text-muted me-1"></i>
+                                            {% if group.orders.0.collection_frequency == 'WEEKLY' %}
+                                            Weekly on 
+                                            {% if group.orders.0.collection_day_of_week == 0 %}Monday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 1 %}Tuesday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 2 %}Wednesday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 3 %}Thursday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 4 %}Friday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 5 %}Saturday{% endif %}
+                                            {% if group.orders.0.collection_day_of_week == 6 %}Sunday{% endif %}
+                                            {% elif group.orders.0.collection_frequency == 'MONTHLY' %}
+                                            Monthly on day {{ group.orders.0.collection_day_of_month }}
+                                            {% else %}
+                                            No regular collection
+                                            {% endif %}
+                                        </span>
+                                        <a href="{% url 'app:customer-detail' group.customer.id %}" class="btn btn-sm btn-outline-primary">
+                                            Customer Profile
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-calendar-check fa-3x mb-3"></i>
+                                <h4>No Upcoming Payments Found</h4>
+                                <p>There are no orders with scheduled payment dates matching the selected filter.</p>
+                                <a href="{% url 'app:order-create' %}" class="btn btn-primary mt-2">
+                                    <i class="fas fa-plus me-2"></i>Create New Order
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Make today's date available to the template
+    document.addEventListener('DOMContentLoaded', function() {
+        // Code to handle date comparisons if needed
+    });
+</script>
+{% endblock %} 

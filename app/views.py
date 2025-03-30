@@ -17,8 +17,8 @@ import pandas as pd
 from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
-from accounts.models import Company
-from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Bank
+from accounts.models import Company, Agent
+from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Bank, CustomerItemPrice
 from .forms import (
     OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, 
     OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm, CustomerCSVUploadForm, BankForm
@@ -37,6 +37,7 @@ def home(request):
     # Get time frame parameters
     timeframe = request.GET.get('timeframe', 'monthly')
     today = timezone.now()
+    today_date = timezone.localdate()
     
     # Calculate date range based on timeframe
     if timeframe == 'daily':
@@ -160,6 +161,33 @@ def home(request):
     # Add initial balance to pending collections calculation
     pending_collections = total_orders_amount - total_collections + total_initial_balance
     
+    # Get defaulters information
+    defaulters = []
+    for customer in customers:
+        balance = customer.outstanding_balance
+        if balance > 0:
+            customer.calculated_balance = balance
+            defaulters.append(customer)
+    
+    # Sort defaulters by balance (highest first)
+    defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
+    defaulters = defaulters[:5]  # Only show top 5 defaulters
+    
+    # Get upcoming payments information
+    upcoming_orders = Order.objects.filter(
+        company=company,
+        next_payment_date__isnull=False
+    ).order_by('next_payment_date')
+    
+    # Add those that are overdue (payment date has passed)
+    overdue_orders = upcoming_orders.filter(next_payment_date__lt=today_date)
+    
+    # Add those that are due soon (within the next 7 days)
+    due_soon = upcoming_orders.filter(
+        next_payment_date__gte=today_date,
+        next_payment_date__lte=today_date + timezone.timedelta(days=7)
+    )
+    
     # Get paginated recent customers with their details
     page = request.GET.get('page', 1)
     search_query = request.GET.get('search', '')
@@ -215,16 +243,9 @@ def home(request):
                 output_field=DecimalField(max_digits=10, decimal_places=2)
             )
         ).order_by('-calculated_balance')
-    elif sort_by == 'created_at':
-        # Sort by creation date (oldest first)
-        customer_queryset = customer_queryset.order_by('created_at')
     else:
-        # Default to newest first if no specific sort is applied
-        if sort_by == '-created_at':
-            customer_queryset = customer_queryset.order_by(sort_by)
-        else:
-            # Apply the requested sort but maintain LIFO as secondary sort
-            customer_queryset = customer_queryset.order_by(sort_by, '-created_at')
+        # Standard sorting
+        customer_queryset = customer_queryset.order_by(sort_by)
     
     # Annotate customers with required fields
     customer_queryset = customer_queryset.annotate(
@@ -268,13 +289,62 @@ def home(request):
     
     # Get paginated recent activities based on user type
     activities_page = request.GET.get('activities_page', 1)
-    if user_type == 'AGENT':
-        activities = get_agent_recent_activities(request.user, limit=20)  # Increased limit for pagination
+    
+    # Merge payment and order data for activity feed
+    recent_activities_data = []
+    
+    if user_type == 'COMPANY_ADMIN':
+        # For company admin, show all activities
+        for order in orders.order_by('-created_at')[:50]:
+            recent_activities_data.append({
+                'type': 'order',
+                'title': f'Order #{order.id}',
+                'description': f'{order.customer.name} - ₹{order.total_amount}',
+                'date': order.created_at,
+                'badge_class': 'bg-primary',
+                'icon_class': 'fa-shopping-cart',
+                'url': reverse_lazy('app:order-detail', kwargs={'pk': order.id})
+            })
+            
+        for payment in payments.order_by('-created_at')[:50]:
+            recent_activities_data.append({
+                'type': 'payment',
+                'title': f'Payment #{payment.id}',
+                'description': f'{payment.customer.name} - ₹{payment.amount_received}',
+                'date': payment.created_at,
+                'badge_class': 'bg-success',
+                'icon_class': 'fa-money-bill-wave',
+                'url': reverse_lazy('app:payment-receipt', kwargs={'pk': payment.id})
+            })
     else:
-        activities = get_recent_activities(company, limit=20)  # Increased limit for pagination
+        # For agents, only show their activities
+        for order in orders.filter(agent=request.user).order_by('-created_at')[:50]:
+            recent_activities_data.append({
+                'type': 'order',
+                'title': f'Order #{order.id}',
+                'description': f'{order.customer.name} - ₹{order.total_amount}',
+                'date': order.created_at,
+                'badge_class': 'bg-primary',
+                'icon_class': 'fa-shopping-cart',
+                'url': reverse_lazy('app:order-detail', kwargs={'pk': order.id})
+            })
+            
+        for payment in payments.filter(agent=request.user).order_by('-created_at')[:50]:
+            recent_activities_data.append({
+                'type': 'payment',
+                'title': f'Payment #{payment.id}',
+                'description': f'{payment.customer.name} - ₹{payment.amount_received}',
+                'date': payment.created_at,
+                'badge_class': 'bg-success',
+                'icon_class': 'fa-money-bill-wave',
+                'url': reverse_lazy('app:payment-receipt', kwargs={'pk': payment.id})
+            })
+    
+    # Sort by date (newest first)
+    recent_activities_data.sort(key=lambda x: x['date'], reverse=True)
     
     # Paginate activities
-    activities_paginator = Paginator(activities, 5)
+    activities_paginator = Paginator(recent_activities_data, 10)
     try:
         recent_activities = activities_paginator.page(activities_page)
     except PageNotAnInteger:
@@ -282,50 +352,55 @@ def home(request):
     except EmptyPage:
         recent_activities = activities_paginator.page(activities_paginator.num_pages)
     
-    # Initialize agent_performance
-    agent_performance = []
-    
+    # Get agent performance metrics if user is company admin
+    agent_performance = None
     if user_type == 'COMPANY_ADMIN':
-        # Add agent performance data for company admins
-        agents = company.agents.select_related('user').all()
-        
-        for agent in agents:
-            agent_orders = Order.objects.filter(company=company, agent=agent.user)
-            agent_payments = Payment.objects.filter(company=company, agent=agent.user)
+        try:
+            agents = Agent.objects.filter(company=company)
+            agent_performance = []
             
-            # Calculate total order amount
-            total_order_amount = agent_orders.aggregate(
-                total=Coalesce(
-                    Sum(
-                        ExpressionWrapper(
-                            F('orderitems__quantity') * F('orderitems__price'),
-                            output_field=DecimalField(max_digits=10, decimal_places=2)
-                        )
-                    ),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                )
-            )['total']
+            for agent in agents:
+                # Make sure the agent has a user link
+                if hasattr(agent, 'user') and agent.user is not None:
+                    try:
+                        # Filter orders and payments by agent user
+                        agent_orders = Order.objects.filter(company=company, agent=agent.user)
+                        agent_payments = Payment.objects.filter(company=company, agent=agent.user)
+                        
+                        # Calculate total order amount
+                        total_orders_amount = calculate_total_orders_amount(agent_orders)
+                        
+                        # Calculate total collections
+                        total_collections = calculate_total_payments(agent_payments)
+                        
+                        # Calculate collection percentage
+                        collection_percentage = 0
+                        if total_orders_amount > 0:
+                            collection_percentage = (total_collections / total_orders_amount) * 100
+                        
+                        # Get agent name or default to username if full_name is empty
+                        agent_name = agent.full_name or (agent.user.username if agent.user else "Unknown Agent")
+                        
+                        agent_performance.append({
+                            'agent': agent.user,
+                            'name': agent_name,
+                            'last_active': agent.user.last_login or agent.created_at,
+                            'total_orders': agent_orders.count(),
+                            'total_collections': total_collections,
+                            'pending_collections': max(0, total_orders_amount - total_collections),
+                            'collection_percentage': min(100, collection_percentage)  # Cap at 100%
+                        })
+                    except Exception as e:
+                        # Log the specific error for this agent but continue with others
+                        print(f"Error processing agent {getattr(agent, 'full_name', 'Unknown')}: {e}")
+                        continue
             
-            # Calculate total collections
-            total_collections = agent_payments.aggregate(
-                total=Coalesce(
-                    Sum('amount_received', output_field=DecimalField(max_digits=10, decimal_places=2)),
-                    Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
-                )
-            )['total']
-            
-            # Calculate collection percentage
-            collection_percentage = 0
-            if total_order_amount > 0:
-                collection_percentage = (total_collections / total_order_amount) * 100
-            
-            agent_performance.append({
-                'agent': agent.user,
-                'total_orders': agent_orders.count(),
-                'total_order_amount': total_order_amount,
-                'total_collections': total_collections,
-                'collection_percentage': collection_percentage
-            })
+            # Sort by collection percentage (descending)
+            agent_performance.sort(key=lambda x: x['collection_percentage'], reverse=True)
+        except Exception as e:
+            # Log or print the error for debugging
+            print(f"Error in agent performance calculation: {e}")
+            agent_performance = []
     
     # Add all data to context
     context = {
@@ -351,6 +426,11 @@ def home(request):
         'search_query': search_query,
         'sort_by': sort_by,
         'agent_performance': agent_performance if user_type == 'COMPANY_ADMIN' else None,
+        'defaulters': defaulters,
+        'overdue_orders': overdue_orders[:5],  # Limit to top 5
+        'due_soon_orders': due_soon[:5],  # Limit to top 5
+        'total_overdue': overdue_orders.count(),
+        'total_due_soon': due_soon.count(),
     }
     
     return render(request, 'app/home.html', context)
@@ -875,6 +955,132 @@ class PaymentListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         """Filter payments by company."""
         return Payment.objects.filter(company=self.request.user.company)
+
+class DefaultersListView(LoginRequiredMixin, ListView):
+    """View for listing customers with pending payments (defaulters)."""
+    model = Customer
+    template_name = 'app/defaulters_list.html'
+    context_object_name = 'defaulters'
+    
+    def get_queryset(self):
+        """Get customers with outstanding balances."""
+        company = self.request.user.company
+        
+        # Get all customers for this company
+        customers = Customer.objects.filter(company=company)
+        
+        # Filter to include only those with positive balances
+        defaulters = []
+        for customer in customers:
+            balance = customer.outstanding_balance
+            if balance > 0:
+                customer.calculated_balance = balance
+                defaulters.append(customer)
+        
+        # Sort by balance (highest first)
+        defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
+        return defaulters
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add orders with upcoming payments
+        today = timezone.localdate()
+        company = self.request.user.company
+        
+        # Get orders with next payment dates
+        upcoming_orders = Order.objects.filter(
+            company=company,
+            next_payment_date__isnull=False
+        ).order_by('next_payment_date')
+        
+        # Add those that are overdue (payment date has passed)
+        overdue_orders = upcoming_orders.filter(next_payment_date__lt=today)
+        context['overdue_orders'] = overdue_orders
+        
+        # Add those that are due soon (within the next 7 days)
+        due_soon = upcoming_orders.filter(
+            next_payment_date__gte=today,
+            next_payment_date__lte=today + timezone.timedelta(days=7)
+        )
+        context['due_soon_orders'] = due_soon
+        
+        return context
+
+class UpcomingPaymentsView(LoginRequiredMixin, ListView):
+    """View for listing upcoming payments based on order payment schedules."""
+    model = Order
+    template_name = 'app/upcoming_payments.html'
+    context_object_name = 'upcoming_orders'
+    
+    def get_queryset(self):
+        """Get orders with upcoming payment dates."""
+        company = self.request.user.company
+        
+        # Get orders with next payment dates
+        return Order.objects.filter(
+            company=company,
+            next_payment_date__isnull=False
+        ).order_by('next_payment_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        
+        # Add today's date for template comparisons
+        context['today'] = today
+        
+        # Add filter options
+        filter_by = self.request.GET.get('filter', 'all')
+        queryset = self.get_queryset()
+        
+        if filter_by == 'overdue':
+            # Show only overdue
+            queryset = queryset.filter(next_payment_date__lt=today)
+            context['filter'] = 'overdue'
+        elif filter_by == 'this_week':
+            # Show only this week
+            week_end = today + timezone.timedelta(days=7)
+            queryset = queryset.filter(
+                next_payment_date__gte=today,
+                next_payment_date__lte=week_end
+            )
+            context['filter'] = 'this_week'
+        elif filter_by == 'next_week':
+            # Show only next week
+            week_start = today + timezone.timedelta(days=7)
+            week_end = today + timezone.timedelta(days=14)
+            queryset = queryset.filter(
+                next_payment_date__gte=week_start,
+                next_payment_date__lte=week_end
+            )
+            context['filter'] = 'next_week'
+        else:
+            context['filter'] = 'all'
+        
+        # Group by customer
+        grouped_orders = {}
+        for order in queryset:
+            customer_id = order.customer.id
+            if customer_id not in grouped_orders:
+                grouped_orders[customer_id] = {
+                    'customer': order.customer,
+                    'orders': [],
+                    'total_due': 0
+                }
+            grouped_orders[customer_id]['orders'].append(order)
+            grouped_orders[customer_id]['total_due'] += order.total_amount
+        
+        context['grouped_orders'] = grouped_orders.values()
+        
+        # Add statistics
+        context['total_overdue'] = queryset.filter(next_payment_date__lt=today).count()
+        context['total_due_this_week'] = queryset.filter(
+            next_payment_date__gte=today,
+            next_payment_date__lte=today + timezone.timedelta(days=7)
+        ).count()
+        
+        return context
 
 class PaymentCreateView(LoginRequiredMixin, CreateView):
     """View for creating a new payment."""

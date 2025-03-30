@@ -8,28 +8,6 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Customer(models.Model):
     """Model for customers."""
-    CUSTOMER_TYPE_CHOICES = [
-        ('B2C_READY_CASH', 'B2C Ready Cash'),
-        ('B2C_EMI', 'B2C EMI'),
-        ('B2B', 'B2B'),
-    ]
-    
-    COLLECTION_FREQUENCY_CHOICES = [
-        ('NONE', 'No Regular Collection'),
-        ('WEEKLY', 'Weekly'),
-        ('MONTHLY', 'Monthly'),
-    ]
-    
-    WEEKDAY_CHOICES = [
-        (0, 'Monday'),
-        (1, 'Tuesday'),
-        (2, 'Wednesday'),
-        (3, 'Thursday'),
-        (4, 'Friday'),
-        (5, 'Saturday'),
-        (6, 'Sunday'),
-    ]
-    
     company = models.ForeignKey(
         Company,
         on_delete=models.CASCADE,
@@ -42,28 +20,6 @@ class Customer(models.Model):
     location = models.CharField(max_length=100)
     id_number = models.CharField(max_length=50, blank=True, null=True)
     initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    customer_type = models.CharField(
-        max_length=20,
-        choices=CUSTOMER_TYPE_CHOICES,
-        default='B2C_READY_CASH'
-    )
-    collection_frequency = models.CharField(
-        max_length=10,
-        choices=COLLECTION_FREQUENCY_CHOICES,
-        default='NONE'
-    )
-    collection_day_of_week = models.IntegerField(
-        choices=WEEKDAY_CHOICES,
-        null=True,
-        blank=True,
-        help_text='Day of the week for weekly collections'
-    )
-    collection_day_of_month = models.IntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(31)],
-        help_text='Day of the month for monthly collections (1-31)'
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -113,6 +69,28 @@ class CustomerItemPrice(models.Model):
 
 class Order(models.Model):
     """Model for orders."""
+    ORDER_TYPE_CHOICES = [
+        ('B2C_READY_CASH', 'B2C Ready Cash'),
+        ('B2C_EMI', 'B2C EMI'),
+        ('B2B', 'B2B'),
+    ]
+    
+    COLLECTION_FREQUENCY_CHOICES = [
+        ('NONE', 'No Regular Collection'),
+        ('WEEKLY', 'Weekly'),
+        ('MONTHLY', 'Monthly'),
+    ]
+    
+    WEEKDAY_CHOICES = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='orders')
     agent = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -124,6 +102,29 @@ class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     order_date = models.DateField()
     delivery_date = models.DateField(null=True, blank=True, help_text="Date when the order should be delivered (optional)")
+    order_type = models.CharField(
+        max_length=20,
+        choices=ORDER_TYPE_CHOICES,
+        default='B2C_READY_CASH'
+    )
+    collection_frequency = models.CharField(
+        max_length=10,
+        choices=COLLECTION_FREQUENCY_CHOICES,
+        default='NONE'
+    )
+    collection_day_of_week = models.IntegerField(
+        choices=WEEKDAY_CHOICES,
+        null=True,
+        blank=True,
+        help_text='Day of the week for weekly collections'
+    )
+    collection_day_of_month = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text='Day of the month for monthly collections (1-31)'
+    )
+    next_payment_date = models.DateField(null=True, blank=True, help_text="Calculated next payment date based on collection frequency")
     remarks = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -137,6 +138,41 @@ class Order(models.Model):
         return self.orderitems.aggregate(
             total=Sum(F('quantity') * F('price'))
         )['total'] or 0
+        
+    def save(self, *args, **kwargs):
+        """Override save method to calculate next payment date."""
+        # Calculate next payment date based on collection frequency
+        if self.collection_frequency == 'WEEKLY' and self.collection_day_of_week is not None:
+            # Get the next occurrence of the specified day of the week
+            today = timezone.localdate()
+            days_ahead = self.collection_day_of_week - today.weekday()
+            if days_ahead <= 0:  # Target day already happened this week
+                days_ahead += 7
+            self.next_payment_date = today + timezone.timedelta(days=days_ahead)
+        elif self.collection_frequency == 'MONTHLY' and self.collection_day_of_month is not None:
+            # Get the next occurrence of the specified day of the month
+            today = timezone.localdate()
+            # If today is after the collection day in the current month, move to next month
+            if today.day > self.collection_day_of_month:
+                if today.month == 12:
+                    next_month = 1
+                    next_year = today.year + 1
+                else:
+                    next_month = today.month + 1
+                    next_year = today.year
+                # Handle case where day might be invalid for the next month (e.g., 31 in a 30-day month)
+                import calendar
+                last_day = calendar.monthrange(next_year, next_month)[1]
+                day = min(self.collection_day_of_month, last_day)
+                self.next_payment_date = timezone.datetime(next_year, next_month, day).date()
+            else:
+                # Set to the collection day in the current month
+                self.next_payment_date = timezone.datetime(today.year, today.month, self.collection_day_of_month).date()
+        else:
+            # No regular collection
+            self.next_payment_date = None
+        
+        super().save(*args, **kwargs)
 
 class OrderItem(models.Model):
     """Model for order items."""
