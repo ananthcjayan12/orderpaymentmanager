@@ -1,0 +1,65 @@
+{% extends 'app/base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit Payment Account{% else %}Add Payment Account{% endif %} - Order Manager{% endblock %}
+
+{% block main_content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title h5 mb-0">
+                        {% if form.instance.pk %}
+                            Edit Payment Account: {{ form.instance.name }}
+                        {% else %}
+                            Add New Payment Account
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.name.errors }}
+                                </div>
+                            {% endif %}
+                            {% if form.name.help_text %}
+                                <div class="form-text">{{ form.name.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.is_default }}
+                            <label class="form-check-label" for="{{ form.is_default.id_for_label }}">
+                                {{ form.is_default.label }}
+                            </label>
+                            {% if form.is_default.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.is_default.errors }}
+                                </div>
+                            {% endif %}
+                            {% if form.is_default.help_text %}
+                                <div class="form-text">{{ form.is_default.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'app:bank-list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

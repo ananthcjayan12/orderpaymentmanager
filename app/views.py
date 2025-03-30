@@ -18,10 +18,10 @@ from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from accounts.models import Company
-from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem
+from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Bank
 from .forms import (
     OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, 
-    OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm, CustomerCSVUploadForm
+    OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm, CustomerCSVUploadForm, BankForm
 )
 from .utils import (
     calculate_total_orders_amount, calculate_total_payments, 
@@ -947,6 +947,29 @@ class OrderInvoiceView(LoginRequiredMixin, DetailView):
         })
         return context
 
+# Public, non-login required invoice view
+class PublicOrderInvoiceView(DetailView):
+    model = Order
+    template_name = 'app/receipts/order_invoice.html'
+    context_object_name = 'order'
+    
+    def get_queryset(self):
+        # No company filtering - open to public access
+        return Order.objects.all()
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'title': 'Order Invoice',
+            'doc_type': 'Invoice',
+            'amount': self.object.total_amount,
+            'customer': self.object.customer,
+            'document_number': self.object.id,
+            'back_url': reverse('app:order-invoice-public', kwargs={'pk': self.object.pk}),
+            'is_public': True
+        })
+        return context
+
 @login_required
 def get_customer_items(request, customer_id):
     """API endpoint to get customer-specific item prices."""
@@ -1243,3 +1266,73 @@ def create_item(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+# Bank Management Views
+class BankListView(LoginRequiredMixin, ListView):
+    """View for listing company bank accounts."""
+    model = Bank
+    template_name = 'app/bank_list.html'
+    context_object_name = 'banks'
+    
+    def get_queryset(self):
+        """Filter banks by company."""
+        return Bank.objects.filter(company=self.request.user.company)
+
+class BankCreateView(LoginRequiredMixin, CreateView):
+    """View for creating a new bank account."""
+    model = Bank
+    form_class = BankForm
+    template_name = 'app/bank_form.html'
+    success_url = reverse_lazy('app:bank-list')
+    
+    def form_valid(self, form):
+        """Set the company before saving."""
+        form.instance.company = self.request.user.company
+        
+        # Use transaction to ensure integrity
+        with transaction.atomic():
+            response = super().form_valid(form)
+            messages.success(self.request, 'Bank account created successfully.')
+            return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, 'Please correct the errors below.')
+        return super().form_invalid(form)
+
+class BankUpdateView(LoginRequiredMixin, UpdateView):
+    """View for updating a bank account."""
+    model = Bank
+    form_class = BankForm
+    template_name = 'app/bank_form.html'
+    success_url = reverse_lazy('app:bank-list')
+    
+    def get_queryset(self):
+        """Filter banks by company."""
+        return Bank.objects.filter(company=self.request.user.company)
+    
+    def form_valid(self, form):
+        with transaction.atomic():
+            response = super().form_valid(form)
+            messages.success(self.request, 'Bank account updated successfully.')
+            return response
+
+@login_required
+def bank_delete(request, pk):
+    """Delete a bank account."""
+    bank = get_object_or_404(Bank, pk=pk, company=request.user.company)
+    
+    if request.method == 'POST':
+        # Check if bank has payments
+        if bank.payments.exists():
+            messages.error(request, f"Cannot delete bank '{bank.name}' because it has payments associated with it.")
+            return redirect('app:bank-list')
+        
+        try:
+            with transaction.atomic():
+                bank_name = bank.name
+                bank.delete()
+                messages.success(request, f"Bank account '{bank_name}' has been deleted successfully.")
+        except Exception as e:
+            messages.error(request, f"Error deleting bank account: {str(e)}")
+    
+    return redirect('app:bank-list')

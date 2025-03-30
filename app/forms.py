@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Customer
+from .models import Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Customer, Bank
 from django.utils import timezone
 
 class OrderForm(forms.ModelForm):
@@ -101,8 +101,10 @@ OrderTemplateItemFormSet = inlineformset_factory(
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ['customer', 'amount_received', 'notes']
+        fields = ['customer', 'bank', 'amount_received', 'notes']
         widgets = {
+            'customer': forms.Select(attrs={'class': 'form-select', 'id': 'id_customer'}),
+            'bank': forms.Select(attrs={'class': 'form-select', 'id': 'id_bank'}),
             'amount_received': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
@@ -111,9 +113,35 @@ class PaymentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if company:
             self.fields['customer'].queryset = Customer.objects.filter(company=company)
+            # Filter banks by company
+            self.fields['bank'].queryset = Bank.objects.filter(company=company)
+            # If company has banks, default to the one marked as default
+            default_bank = Bank.objects.filter(company=company, is_default=True).first()
+            if default_bank:
+                self.fields['bank'].initial = default_bank
+            
+            # Add help text for bank field
+            self.fields['bank'].help_text = "Select which payment account received this payment"
+        
         if 'initial' in kwargs and 'customer' in kwargs['initial']:
             self.fields['customer'].widget.attrs['readonly'] = True
-            self.fields['customer'].disabled = True 
+            self.fields['customer'].disabled = True
+
+class BankForm(forms.ModelForm):
+    class Meta:
+        model = Bank
+        fields = ['name', 'is_default']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Payment Account Name'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].label = "Account Name"
+        self.fields['name'].help_text = "Enter a descriptive name (e.g., 'Main Account', 'Cash', 'HDFC Bank')"
+        self.fields['is_default'].label = "Set as default"
+        self.fields['is_default'].help_text = "This account will be auto-selected for new payments"
 
 class CustomerForm(forms.ModelForm):
     class Meta:

@@ -141,6 +141,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Amount</th>
+                                    <th>Bank</th>
                                     <th>Notes</th>
                                 </tr>
                             </thead>
@@ -149,11 +150,20 @@
                                 <tr>
                                     <td>{{ payment.payment_date }}</td>
                                     <td>₹{{ payment.amount_received|floatformat:2 }}</td>
+                                    <td>
+                                        {% if payment.bank %}
+                                        <span class="badge {% if payment.bank.is_default %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ payment.bank.name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ payment.notes|default:"-" }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center">No payments found.</td>
+                                    <td colspan="4" class="text-center">No payments found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

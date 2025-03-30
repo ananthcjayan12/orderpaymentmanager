@@ -161,26 +161,6 @@ class OrderItem(models.Model):
         """Calculate total for this line item."""
         return self.quantity * self.price
 
-class Payment(models.Model):
-    """Model for payments."""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payments')
-    agent = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='agent_payments'
-    )
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
-    amount_received = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_date = models.DateField(default=timezone.now)
-    notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Payment #{self.id} - {self.customer.name}"
-
 class OrderTemplate(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -215,3 +195,48 @@ class OrderTemplateItem(models.Model):
 
     def __str__(self):
         return f"{self.item.name} - {self.quantity}"
+
+class Bank(models.Model):
+    """Model for company banks."""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='banks')
+    name = models.CharField(max_length=100, help_text="Payment receiving account (e.g., 'Main Account', 'Cash')")
+    is_default = models.BooleanField(default=False, help_text="Set as the default payment method")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_default', 'name']
+        unique_together = ['company', 'name']
+
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        # If this bank is set as default, unset default for other banks of the company
+        if self.is_default:
+            Bank.objects.filter(company=self.company, is_default=True).exclude(pk=self.pk).update(is_default=False)
+        # If no default set for the company, make this the default
+        elif not Bank.objects.filter(company=self.company, is_default=True).exists():
+            self.is_default = True
+        super().save(*args, **kwargs)
+
+class Payment(models.Model):
+    """Model for payments."""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payments')
+    agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='agent_payments'
+    )
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
+    bank = models.ForeignKey(Bank, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
+    amount_received = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField(default=timezone.now)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payment #{self.id} - {self.customer.name}"

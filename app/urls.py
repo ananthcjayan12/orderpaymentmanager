@@ -15,12 +15,21 @@ urlpatterns = [
     path('customers/<int:pk>/delete/', views.customer_delete, name='customer-delete'),
     path('customers/csv-template/', views.download_customer_csv_template, name='customer-csv-template'),
     
+    # Banks
+    path('banks/', views.BankListView.as_view(), name='bank-list'),
+    path('banks/create/', views.BankCreateView.as_view(), name='bank-create'),
+    path('banks/<int:pk>/update/', views.BankUpdateView.as_view(), name='bank-update'),
+    path('banks/<int:pk>/delete/', views.bank_delete, name='bank-delete'),
+    
     # Orders
     path('orders/', views.OrderListView.as_view(), name='order-list'),
     path('orders/create/', views.OrderCreateView.as_view(), name='order-create'),
     path('orders/create/bulk/', views.BulkOrderCreateView.as_view(), name='bulk-order-create'),
     path('orders/<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
     path('orders/<int:pk>/invoice/', views.OrderInvoiceView.as_view(), name='order-invoice'),
+    
+    # Public (no login required) invoice access
+    path('invoice/<int:pk>/', views.PublicOrderInvoiceView.as_view(), name='order-invoice-public'),
     
     # Order Templates
     path('templates/', views.OrderTemplateListView.as_view(), name='order-template-list'),

@@ -36,7 +36,7 @@
                             <th>Customer</th>
                             <th>Date</th>
                             <th>Amount</th>
-                            <th>Mode</th>
+                            <th>Bank</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -63,7 +63,13 @@
                             <td>{{ payment.created_at|date:"d M Y" }}</td>
                             <td>₹{{ payment.amount_received|floatformat:2 }}</td>
                             <td>
-                                <span class="badge bg-info">{{ payment.payment_mode }}</span>
+                                {% if payment.bank %}
+                                <span class="badge {% if payment.bank.is_default %}bg-success{% else %}bg-info{% endif %}">
+                                    {{ payment.bank.name }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <div class="btn-group">

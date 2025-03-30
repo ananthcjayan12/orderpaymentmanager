@@ -194,6 +194,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{% url 'app:bank-list' %}" class="nav-link {% if '/banks/' in request.path %}active{% endif %}">
+                        <i class="fas fa-university"></i>
+                        <span>Payment Accounts</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{% url 'app:order-template-list' %}" class="nav-link {% if '/templates/' in request.path %}active{% endif %}">
                         <i class="fas fa-file-alt"></i>
                         <span>Order Templates</span>

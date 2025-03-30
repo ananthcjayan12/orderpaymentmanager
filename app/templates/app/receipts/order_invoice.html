@@ -1,55 +1,389 @@
-{% extends 'app/receipts/base_receipt.html' %}
-
-{% block document_details %}
-<div class="detail-row">
-    <span class="detail-label">Invoice No</span>
-    <span>#{{ order.id|stringformat:"05d" }}</span>
-</div>
-<div class="detail-row">
-    <span class="detail-label">Date</span>
-    <span>{{ order.order_date|date:"d-M-Y" }}</span>
-</div>
-<div class="detail-row">
-    <span class="detail-label">Time</span>
-    <span>{{ order.created_at|time:"H:i" }}</span>
-</div>
-{% endblock %}
-
-{% block items_table %}
-<table class="receipt-table">
-    <tr>
-        <th>Item</th>
-        <th class="amount-col">Qty</th>
-        <th class="amount-col">Price</th>
-        <th class="amount-col">Total</th>
-    </tr>
-    {% for item in order.orderitems.all %}
-    <tr>
-        <td>{{ item.item_name }}</td>
-        <td class="amount-col">{{ item.quantity }}</td>
-        <td class="amount-col">₹{{ item.price|floatformat:2 }}</td>
-        <td class="amount-col">₹{{ item.line_total|floatformat:2 }}</td>
-    </tr>
-    {% endfor %}
-</table>
-
-<div class="total-section">
-    <div class="detail-row">
-        <span>Total Amount</span>
-        <span>₹{{ order.total_amount|floatformat:2 }}</span>
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ order.id|stringformat:"05d" }}</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .invoice-container {
+            width: 21cm;
+            margin: 0 auto;
+            padding: 1cm;
+            box-sizing: border-box;
+        }
+        
+        /* Header Styling */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ccc;
+        }
+        
+        .company-info {
+            flex: 1;
+        }
+        
+        .company-info h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            color: #2a4b8d;
+        }
+        
+        .company-info p {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        
+        .invoice-title {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: right;
+            color: #2a4b8d;
+            margin-bottom: 15px;
+        }
+        
+        .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        
+        .invoice-details-left {
+            flex: 1;
+        }
+        
+        .invoice-details-right {
+            flex: 1;
+            text-align: right;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .info-value {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        /* Items Table Styling */
+        .invoice-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .invoice-items th {
+            background-color: #2a4b8d;
+            color: white;
+            text-align: left;
+            padding: 12px;
+            font-size: 14px;
+        }
+        
+        .invoice-items td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        
+        .invoice-items tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .invoice-items th:last-child,
+        .invoice-items td:last-child,
+        .invoice-items th.number-col,
+        .invoice-items td.number-col {
+            text-align: right;
+        }
+        
+        .invoice-items th.quantity-col,
+        .invoice-items td.quantity-col {
+            text-align: center;
+        }
+        
+        /* Totals and Footer Styling */
+        .totals-section {
+            width: 60%;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .totals-table td {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        .totals-table .total-label {
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .totals-table .total-value {
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .totals-table .grand-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2a4b8d;
+            background-color: #f9f9f9;
+        }
+        
+        .remarks-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        
+        /* Print Controls */
+        .print-controls {
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .print-button {
+            padding: 10px 20px;
+            background-color: #2a4b8d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-link {
+            padding: 10px 20px;
+            background-color: #666;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .whatsapp-button {
+            padding: 10px 20px;
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .whatsapp-button i {
+            font-size: 20px;
+        }
+        
+        /* Print Media Styles */
+        @media print {
+            .print-controls {
+                display: none;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .invoice-container {
+                width: 100%;
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                padding: 0.5cm;
+            }
+            
+            /* Ensure page breaks don't disrupt important content */
+            .invoice-header, .invoice-details, .invoice-items-container, .totals-section, .remarks-section, .authorized-signature {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Print controls - hidden when printing -->
+    <div class="print-controls">
+        <button onclick="window.print()" class="print-button">
+            <i class="fas fa-print"></i> Print Invoice
+        </button>
+        
+        <!-- WhatsApp share button -->
+        <a href="https://wa.me/{{ order.customer.mobile1|cut:'+' }}?text=Please%20find%20your%20estimate%20from%20{{ order.company.name|urlencode }}%20-%20{{ request.scheme }}://{{ request.get_host }}{% url 'app:order-invoice-public' order.pk %}" 
+           target="_blank" 
+           class="whatsapp-button">
+            <i class="fab fa-whatsapp"></i> Share via WhatsApp
+        </a>
+        
+        {% if is_public %}
+        <a href="javascript:window.close();" class="back-link">
+            <i class="fas fa-times"></i> Close
+        </a>
+        {% else %}
+        <a href="{{ back_url }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+        {% endif %}
     </div>
-</div>
-{% endblock %}
 
-{% block notes %}
-{% if order.remarks %}
-<div class="notes-section">
-    <strong>Remarks:</strong><br>
-    {{ order.remarks }}
-</div>
-{% endif %}
-{% endblock %}
+    <!-- Invoice content -->
+    <div class="invoice-container">
+        <!-- Header with company & invoice details -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h2>{{ order.company.name|upper }}</h2>
+                <p>{{ order.company.address|default:"" }}</p>
+                <p>Tel: {{ order.company.phone|default:"" }}</p>
+                {% if order.company.email %}
+                <p>Email: {{ order.company.email }}</p>
+                {% endif %}
+                {% if order.company.gstin %}
+                <p>GSTIN: {{ order.company.gstin }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <div class="invoice-title">ESTIMATE</div>
+            </div>
+        </div>
+        
+        <!-- Invoice/Customer Details -->
+        <div class="invoice-details">
+            <div class="invoice-details-left">
+                <div class="info-title">To:</div>
+                <div class="info-value">{{ order.customer.name }}</div>
+                <div class="info-value">{{ order.customer.address }}</div>
+                <div class="info-value">Tel: {{ order.customer.mobile1 }}</div>
+                {% if order.customer.mobile2 %}
+                <div class="info-value">Alt: {{ order.customer.mobile2 }}</div>
+                {% endif %}
+            </div>
+            <div class="invoice-details-right">
+                <div class="info-title">Bill No:</div>
+                <div class="info-value">{{ order.id|stringformat:"05d" }}</div>
+                <div class="info-title">Date:</div>
+                <div class="info-value">{{ order.order_date|date:"d/m/y" }}</div>
+                {% if order.delivery_date %}
+                <div class="info-title">Delivery Date:</div>
+                <div class="info-value">{{ order.delivery_date|date:"d/m/y" }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Items Table -->
+        <div class="invoice-items-container">
+            <table class="invoice-items">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">S.No</th>
+                        <th style="width: 45%;">Description</th>
+                        <th class="quantity-col" style="width: 15%;">Qty</th>
+                        <th class="number-col" style="width: 15%;">Unit</th>
+                        <th class="number-col" style="width: 15%;">Rate</th>
+                        <th class="number-col" style="width: 20%;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.orderitems.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.item_name }}</td>
+                        <td class="quantity-col">{{ item.quantity }}</td>
+                        <td class="number-col">
+                            {% if item.item %}
+                                {{ item.item.unit|upper }}
+                            {% else %}
+                                NOS
+                            {% endif %}
+                        </td>
+                        <td class="number-col">₹{{ item.price|floatformat:2 }}</td>
+                        <td class="number-col">₹{{ item.line_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <!-- Empty row to fill space if few items -->
+                    {% if order.orderitems.all|length < 5 %}
+                    <tr style="height: 100px;">
+                        <td colspan="6"></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td class="total-label">Total:</td>
+                    <td class="total-value">₹{{ order.total_amount|floatformat:2 }}</td>
+                </tr>
+                <tr class="grand-total">
+                    <td class="total-label">Grand Total:</td>
+                    <td class="total-value">₹{{ order.total_amount|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Remarks Section -->
+        {% if order.remarks %}
+        <div class="remarks-section">
+            <strong>Remarks:</strong><br>
+            {{ order.remarks }}
+        </div>
+        {% endif %}
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>This is a computer generated document. No signature is required.</p>
+            <p>For any questions regarding this estimate, please contact us at {{ order.company.phone|default:"" }}.</p>
+        </div>
+    </div>
 
-{% block footer_message %}
-Thank you for your business!
-{% endblock %} 
+    <!-- Add FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</body>
+</html> 
