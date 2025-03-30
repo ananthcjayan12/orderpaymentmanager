@@ -5,8 +5,11 @@ IMAGE_NAME = order-payment-manager
 build:
 	docker-compose build
 
+rebuild:
+	docker-compose build --no-cache
+
 # Run the Docker container locally and map port 8000
-run:
+up:
 	docker-compose up
 
 # Run Django database migrations
@@ -19,4 +22,8 @@ shell:
 
 # Run Django tests
 test:
-	docker-compose run --rm web python manage.py test 
+	docker-compose run --rm web python manage.py test
+
+# Access an interactive shell inside the Docker container
+docker-shell:
+	docker-compose run --rm web bash 

@@ -26,5 +26,9 @@ RUN python manage.py collectstatic --noinput
 # Expose port 8000
 EXPOSE 8000
 
-# Run the application using Gunicorn
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"] 
+# Copy the entrypoint script into the container and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && ls -l /app/entrypoint.sh
+
+# Run the entrypoint, which applies migrations then starts Gunicorn
+CMD ["/app/entrypoint.sh"] 
