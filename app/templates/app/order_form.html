@@ -5,6 +5,7 @@
 {% block extra_css %}
 <style>
     :root {
+        --primary-color: #3b7ddd;
         --surface-color: #fff;
         --background-color: #f8f9fa;
         --border-color: #e9ecef;
@@ -13,14 +14,17 @@
 
     .form-section {
         background: var(--surface-color);
-        border: 1px solid var(--border-color);
         border-radius: 0.75rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
         margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
     }
 
     .form-section-header {
-        padding: 1rem 1.5rem;
+        padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--border-color);
+        background-color: var(--background-color);
+        border-radius: 0.75rem 0.75rem 0 0;
     }
 
     .form-section-body {
@@ -28,89 +32,141 @@
     }
 
     .items-table {
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        background: var(--background-color);
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
-    .items-table th {
-        background: var(--surface-color);
-        border-bottom: 2px solid var(--border-color);
+    .items-table thead th {
+        background-color: var(--background-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.75rem 1rem;
+        font-weight: 500;
     }
 
-    .items-table th:first-child {
-        border-top-left-radius: 0.75rem;
-    }
-
-    .items-table th:last-child {
-        border-top-right-radius: 0.75rem;
-    }
-
-    .items-table td {
+    .items-table tbody td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
         vertical-align: middle;
+    }
+
+    .items-table .form-control,
+    .items-table .form-select {
+        border-radius: 0.375rem;
     }
 
     .floating-actions {
         position: sticky;
         bottom: 0;
         background: var(--surface-color);
-        padding: 1rem;
+        padding: 1rem 1.5rem;
         border-top: 1px solid var(--border-color);
+        border-radius: 0 0 0.75rem 0.75rem;
         z-index: 100;
+        box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.05);
     }
 
-    .template-modal .modal-content {
-        border-radius: 1rem;
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
     }
 
-    .template-modal .modal-header {
-        border-radius: 1rem 1rem 0 0;
-        background-color: var(--surface-color);
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.375rem;
     }
 
-    .template-modal .modal-footer {
-        border-radius: 0 0 1rem 1rem;
+    #addItemButton {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    #addItemButton:hover {
+        background-color: #2d6abf;
+    }
+
+    .item-row-container {
+        position: relative;
+        padding: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        background-color: var(--background-color);
+    }
+
+    .item-row-container .row {
+        margin-bottom: 0.5rem;
+    }
+
+    .item-row-container .form-group {
+        margin-bottom: 0.75rem;
+    }
+
+    .remove-item-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+
+    .modal-content {
+        border-radius: 0.75rem;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--background-color);
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--border-color);
+        border-radius: 0 0 0.75rem 0.75rem;
+        padding: 1rem 1.5rem;
     }
 
     @media (max-width: 768px) {
-        .items-table {
-            border: none;
-            background: none;
-        }
-        
-        .items-table thead {
-            display: none;
-        }
-        
-        .items-table tbody tr {
-            display: block;
-            background: var(--background-color);
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            margin-bottom: 1rem;
+        .item-row-container {
             padding: 1rem;
         }
-        
-        .items-table tbody td {
-            display: block;
-            padding: 0.5rem 0;
-            border: none;
+
+        .remove-item-btn {
+            position: relative;
+            top: 0;
+            right: 0;
+            margin-bottom: 0.5rem;
         }
-        
-        .items-table tbody td::before {
-            content: attr(data-label);
-            display: block;
-            font-weight: 500;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-        }
+    }
+
+    .item-name-hidden {
+        display: none !important;
     }
 </style>
 {% endblock %}
 
 {% block main_content %}
-<div class="container-fluid">
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">{% if form.instance.pk %}Edit{% else %}Create New{% endif %} Order</h2>
+        <a href="{% url 'app:order-list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Orders
+        </a>
+    </div>
+
     <form method="post" id="orderForm">
         {% csrf_token %}
         
@@ -121,25 +177,26 @@
             </div>
             <div class="form-section-body">
                 <div class="row g-4">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer *</label>
                             {{ form.customer }}
                             {{ form.customer.errors }}
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date</label>
+                            <label for="{{ form.order_date.id_for_label }}" class="form-label">Order Date *</label>
                             {{ form.order_date }}
                             {{ form.order_date.errors }}
                         </div>
                     </div>
-                    <div class="col-12">
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label for="{{ form.remarks.id_for_label }}" class="form-label">Remarks</label>
-                            {{ form.remarks }}
-                            {{ form.remarks.errors }}
+                            <label for="{{ form.delivery_date.id_for_label }}" class="form-label">Delivery Date</label>
+                            {{ form.delivery_date }}
+                            {{ form.delivery_date.errors }}
+                            <small class="form-text text-muted">Optional</small>
                         </div>
                     </div>
                 </div>
@@ -151,36 +208,30 @@
             <div class="form-section-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Order Items</h5>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-primary" id="loadTemplate">
-                            <i class="fas fa-file-import me-2"></i>Load Template
-                        </button>
-                        <button type="button" class="btn btn-primary" id="addItem">
-                            <i class="fas fa-plus me-2"></i>Add Item
-                        </button>
-                    </div>
+                    <button type="button" id="addItemButton" class="btn-sm btn">
+                        <i class="fas fa-plus me-2"></i>Add Item
+                    </button>
                 </div>
             </div>
             <div class="form-section-body">
-                <div class="table-responsive">
-                    <table class="table items-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 35%">Item</th>
-                                <th style="width: 15%">Quantity</th>
-                                <th style="width: 20%">Price</th>
-                                <th style="width: 20%">Total</th>
-                                <th style="width: 10%">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsContainer">
-                            {{ items.management_form }}
-                            {% for form in items.forms %}
-                            <tr class="item-row">
-                                <td data-label="Item">
-                                    {{ form.id }}
-                                    {{ form.item }}
-                                    <select class="form-select item-select" name="item-select-{{ forloop.counter0 }}">
+                {{ items.management_form }}
+                <div id="itemsContainer">
+                    {% for form in items.forms %}
+                    <div class="item-row-container" data-index="{{ forloop.counter0 }}">
+                        {% if forloop.counter > 1 %}
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        {% endif %}
+                        
+                        {{ form.id }}
+                        {{ form.item }}
+                        
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <div class="form-group">
+                                    <label class="form-label">Item *</label>
+                                    <select class="form-select item-select" name="item-select-{{ forloop.counter0 }}" data-index="{{ forloop.counter0 }}">
                                         <option value="">Select an item</option>
                                         {% for item in available_items %}
                                         <option value="{{ item.id }}" 
@@ -189,104 +240,72 @@
                                             {{ item.name }}
                                         </option>
                                         {% endfor %}
-                                        <option value="new" data-price="0" data-unit="">+ Add New Item</option>
+                                        <option value="new">+ Add New Item</option>
                                     </select>
-                                    {{ form.item_name }}
-                                </td>
-                                <td data-label="Quantity">
+                                    <input type="hidden" name="{{ form.item_name.html_name }}" id="{{ form.item_name.auto_id }}" class="item-name-field" value="{{ form.item_name.value|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="form-group">
+                                    <label class="form-label">Quantity *</label>
                                     {{ form.quantity }}
-                                </td>
-                                <td data-label="Price">
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="form-group">
+                                    <label class="form-label">Price *</label>
                                     <div class="input-group">
                                         <span class="input-group-text">₹</span>
                                         {{ form.price }}
                                     </div>
-                                </td>
-                                <td data-label="Total">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-9">
+                                <div class="form-group mb-0">
+                                    <label class="form-label">Item Remarks</label>
+                                    {{ form.remarks }}
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <div class="form-group mb-0">
+                                    <label class="form-label">Line Total</label>
                                     <div class="input-group">
                                         <span class="input-group-text">₹</span>
                                         <input type="text" class="form-control line-total" readonly>
                                     </div>
-                                </td>
-                                <td>
-                                    {% if forloop.counter > 1 %}
-                                    <button type="button" class="btn btn-outline-danger remove-item">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Order Remarks field -->
+                <div class="mt-4">
+                    <div class="form-group">
+                        <label for="{{ form.remarks.id_for_label }}" class="form-label">Order Remarks</label>
+                        {{ form.remarks }}
+                        {{ form.remarks.errors }}
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="floating-actions">
-            <div class="d-flex gap-3 justify-content-between align-items-center">
-                <div class="h4 mb-0">
-                    Total: ₹<span id="orderTotal">0.00</span>
-                </div>
-                <div class="d-flex gap-3">
-                    <button type="button" class="btn btn-outline-primary" id="saveTemplate">
-                        <i class="fas fa-save me-2"></i>Save as Template
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-check me-2"></i>Save Order
-                    </button>
+            
+            <div class="floating-actions">
+                <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center">
+                    <div class="h4 mb-0">
+                        Total: ₹<span id="orderTotal">0.00</span>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check me-2"></i>Save Order
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </form>
-</div>
-
-<!-- Save Template Modal -->
-<div class="modal fade" id="saveTemplateModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered template-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Save as Template</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="templateForm">
-                    <div class="mb-3">
-                        <label for="templateName" class="form-label">Template Name</label>
-                        <input type="text" class="form-control" id="templateName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="templateDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="templateDescription" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveTemplateBtn">Save Template</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Load Template Modal -->
-<div class="modal fade" id="loadTemplateModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered template-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Load Template</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="list-group" id="templateList">
-                    <!-- Templates will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Create Item Modal -->
@@ -300,15 +319,31 @@
             <div class="modal-body">
                 <form id="createItemForm">
                     <div class="mb-3">
-                        <label for="itemName" class="form-label">Item Name</label>
+                        <label for="itemName" class="form-label">Item Name *</label>
                         <input type="text" class="form-control" id="itemName" required>
                     </div>
                     <div class="mb-3">
-                        <label for="itemUnit" class="form-label">Unit</label>
-                        <input type="text" class="form-control" id="itemUnit" required>
+                        <label for="itemUnit" class="form-label">Unit *</label>
+                        <select class="form-select form-control" id="itemUnit" required>
+                            <option value="nos" selected>nos (Numbers)</option>
+                            <option value="kg">kg (Kilogram)</option>
+                            <option value="g">g (Gram)</option>
+                            <option value="lb">lb (Pound)</option>
+                            <option value="l">l (Liter)</option>
+                            <option value="ml">ml (Milliliter)</option>
+                            <option value="m">m (Meter)</option>
+                            <option value="cm">cm (Centimeter)</option>
+                            <option value="box">box</option>
+                            <option value="pack">pack</option>
+                            <option value="pc">pc (Piece)</option>
+                            <option value="set">set</option>
+                            <option value="pair">pair</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" class="form-control mt-2" id="customUnit" placeholder="Enter custom unit" style="display: none;">
                     </div>
                     <div class="mb-3">
-                        <label for="itemDefaultPrice" class="form-label">Default Price</label>
+                        <label for="itemDefaultPrice" class="form-label">Default Price *</label>
                         <div class="input-group">
                             <span class="input-group-text">₹</span>
                             <input type="number" class="form-control" id="itemDefaultPrice" step="0.01" required>
@@ -333,35 +368,92 @@
 <script>
     $(document).ready(function() {
         // Initialize form controls
-        $('#id_customer').addClass('form-select');
         $('#id_order_date').addClass('form-control');
-        $('#id_remarks').addClass('form-control');
+        $('#id_delivery_date').addClass('form-control');
+        $('#id_remarks').addClass('form-control').attr('rows', '3').attr('placeholder', 'Any additional notes about this order');
         
-        // Initialize Select2 for all item selects
-        $('.item-select').each(function() {
-            $(this).select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: 'Select an item'
-            });
+        // Initialize Select2 for customer dropdown with search
+        $('#id_customer').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Search for a customer...',
+            allowClear: true,
+            dropdownParent: $('body')
         });
         
-        // Calculate line total
-        function calculateLineTotal(row) {
-            const quantity = parseFloat(row.find('input[name$="-quantity"]').val()) || 0;
-            const price = parseFloat(row.find('input[name$="-price"]').val()) || 0;
+        // Initialize item selects
+        initializeItemSelects();
+        
+        // Initialize all item rows with proper data
+        $('.item-row-container').each(function() {
+            const container = $(this);
+            const itemId = container.find('input[name$="-item"]').val();
+            
+            if (itemId) {
+                // Find the corresponding item in the dropdown and select it
+                const select = container.find('.item-select');
+                select.val(itemId).trigger('change');
+                
+                // Make sure all item details are correctly set
+                const selectedOption = select.find('option:selected');
+                const itemName = selectedOption.text().trim();
+                
+                // Ensure item_name field has the correct value
+                container.find('.item-name-field').val(itemName);
+            }
+            
+            // Calculate line total
+            calculateLineTotal(container);
+        });
+        
+        // Calculate initial totals
+        calculateOrderTotal();
+        
+        // Helper functions for calculations
+        function calculateLineTotal(container) {
+            const quantity = parseFloat(container.find('input[name$="-quantity"]').val()) || 0;
+            const price = parseFloat(container.find('input[name$="-price"]').val()) || 0;
             const total = quantity * price;
-            row.find('.line-total').val(total.toFixed(2));
+            container.find('.line-total').val(total.toFixed(2));
             return total;
         }
         
-        // Calculate order total
         function calculateOrderTotal() {
             let total = 0;
-            $('.item-row').each(function() {
+            $('.item-row-container').each(function() {
                 total += calculateLineTotal($(this));
             });
             $('#orderTotal').text(total.toFixed(2));
+        }
+        
+        // Initialize item selects with search functionality
+        function initializeItemSelects() {
+            $('.item-select').each(function() {
+                $(this).select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: 'Search or select an item',
+                    allowClear: true,
+                    dropdownParent: $('body'),
+                    templateResult: formatItemOption
+                });
+            });
+        }
+        
+        // Format items in dropdown for better readability
+        function formatItemOption(item) {
+            if (!item.id || item.id === 'new') return item.text;
+            
+            const $option = $(item.element);
+            const price = $option.data('price');
+            const unit = $option.data('unit');
+            
+            return $(`
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>${item.text}</div>
+                    <div class="text-muted small">₹${price} / ${unit}</div>
+                </div>
+            `);
         }
         
         // Handle quantity and price changes
@@ -370,69 +462,88 @@
         });
         
         // Add new item row
-        $('#addItem').on('click', function() {
-            const lastRow = $('.item-row:last');
-            const forms = $('.item-row').length;
+        $('#addItemButton').on('click', function() {
+            addNewItemRow();
+        });
+        
+        function addNewItemRow() {
+            const itemsCount = $('.item-row-container').length;
+            const lastContainer = $('.item-row-container:last');
+            const newIndex = itemsCount;
             
-            // Clone the row without Select2 elements
-            const newRow = lastRow.clone();
+            // Clone the last container
+            const newContainer = lastContainer.clone();
+            newContainer.attr('data-index', newIndex);
             
-            // Update form index
-            newRow.find('select, input').each(function() {
+            // Add remove button if needed
+            if (!newContainer.find('.remove-item-btn').length) {
+                newContainer.prepend(`
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `);
+            }
+            
+            // Update form indices
+            newContainer.find('select, input, textarea').each(function() {
                 const name = $(this).attr('name');
                 if (name) {
-                    const newName = name.replace(/\d+/, forms);
+                    const newName = name.replace(/\d+/, newIndex);
                     $(this).attr('name', newName);
                     $(this).attr('id', newName);
                 }
             });
             
+            // Update data-index for the select
+            newContainer.find('.item-select').attr('data-index', newIndex);
+            newContainer.find('.item-select').attr('name', `item-select-${newIndex}`);
+            
             // Clear values
-            newRow.find('select').val('');
-            newRow.find('input[type="text"], input[type="number"]').val('');
-            newRow.find('.line-total').val('0.00');
-            newRow.find('input[name$="-DELETE"]').prop('checked', false);
+            newContainer.find('select.item-select').val(null);
+            newContainer.find('input[name$="-item"]').val('');
+            newContainer.find('.item-name-field').val('');
+            newContainer.find('input[name$="-quantity"]').val('1');
+            newContainer.find('input[name$="-price"]').val('0.00');
+            newContainer.find('textarea[name$="-remarks"]').val('');
+            newContainer.find('.line-total').val('0.00');
+            newContainer.find('input[name$="-DELETE"]').prop('checked', false);
             
-            // Remove any existing Select2 elements
-            newRow.find('.select2').remove();
-            
-            // Add remove button if not present
-            if (!newRow.find('.remove-item').length) {
-                newRow.find('td:last').append(
-                    '<button type="button" class="btn btn-outline-danger remove-item">' +
-                    '<i class="fas fa-trash-alt"></i></button>'
-                );
+            // Remove Select2 elements
+            if (newContainer.find('.select2-container').length) {
+                newContainer.find('.select2-container').remove();
             }
             
             // Update total forms count
             const totalForms = $('#id_items-TOTAL_FORMS');
             totalForms.val(parseInt(totalForms.val()) + 1);
             
-            // Add new row
-            lastRow.after(newRow);
+            // Add new container
+            $('#itemsContainer').append(newContainer);
             
-            // Initialize Select2 for the new row
-            newRow.find('.item-select').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: 'Select an item'
-            });
-        });
+            // Initialize Select2 for the new container
+            initializeItemSelects();
+            
+            // Calculate totals
+            calculateOrderTotal();
+        }
         
         // Remove item row
-        $(document).on('click', '.remove-item', function() {
-            const row = $(this).closest('.item-row');
-            if ($('.item-row').length > 1) {
-                row.remove();
-                calculateOrderTotal();
+        $(document).on('click', '.remove-item-btn', function() {
+            const container = $(this).closest('.item-row-container');
+            
+            if ($('.item-row-container').length > 1) {
+                container.remove();
                 
                 // Update total forms count
                 const totalForms = $('#id_items-TOTAL_FORMS');
                 totalForms.val(parseInt(totalForms.val()) - 1);
                 
-                // Update indices for remaining rows
-                $('.item-row').each(function(index) {
-                    $(this).find('select, input').each(function() {
+                // Re-index the remaining containers
+                $('.item-row-container').each(function(index) {
+                    const container = $(this);
+                    container.attr('data-index', index);
+                    
+                    container.find('select, input, textarea').each(function() {
                         const name = $(this).attr('name');
                         if (name) {
                             const newName = name.replace(/\d+/, index);
@@ -440,7 +551,13 @@
                             $(this).attr('id', newName);
                         }
                     });
+                    
+                    container.find('.item-select').attr('data-index', index);
+                    container.find('.item-select').attr('name', `item-select-${index}`);
                 });
+                
+                // Update total
+                calculateOrderTotal();
             } else {
                 alert('At least one item is required');
             }
@@ -448,42 +565,168 @@
         
         // Handle item selection
         $(document).on('change', '.item-select', function() {
-            const row = $(this).closest('.item-row');
+            const container = $(this).closest('.item-row-container');
             const selectedOption = $(this).find('option:selected');
             const itemId = $(this).val();
             
             if (itemId === 'new') {
-                // Store the current select element for later use
-                $('#createItemModal').data('select', $(this));
+                // Store which container triggered the modal
+                $('#createItemModal').data('containerIndex', container.attr('data-index'));
+                
                 // Clear the form
                 $('#createItemForm').trigger('reset');
+                
                 // Show the modal
                 $('#createItemModal').modal('show');
+                
+                // Reset selection to avoid issues
+                $(this).val('').trigger('change');
                 return;
             }
             
-            const itemName = selectedOption.text();
-            const price = selectedOption.data('price');
-            const unit = selectedOption.data('unit');
-            
-            // Update hidden item field
-            row.find('input[name$="-item"]').val(itemId);
-            
-            // Update item name field
-            row.find('input[name$="-item_name"]').val(itemName);
-            
-            // Update price if not already set
-            if (!row.find('input[name$="-price"]').val()) {
-                row.find('input[name$="-price"]').val(price);
+            if (itemId) {
+                const itemName = selectedOption.text().trim();
+                const price = selectedOption.data('price') || 0;
+                
+                console.log("Selected Item:", itemId, itemName, price);
+                
+                // Update hidden item field
+                container.find('input[name$="-item"]').val(itemId);
+                
+                // Update item name field - now updating the hidden input field
+                container.find('.item-name-field').val(itemName);
+                
+                // Always update price when item is changed
+                container.find('input[name$="-price"]').val(price);
+                
+                // Recalculate totals
+                calculateOrderTotal();
+            } else {
+                // Clear fields if no item is selected
+                container.find('input[name$="-item"]').val('');
+                container.find('.item-name-field').val('');
+                container.find('input[name$="-price"]').val('0.00');
                 calculateOrderTotal();
             }
         });
         
-        // Form submission handling
+        // Create new item
+        $('#createItemBtn').on('click', function() {
+            // Get data from form
+            const name = $('#itemName').val();
+            let unit = $('#itemUnit').val();
+            const price = $('#itemDefaultPrice').val();
+            const description = $('#itemDescription').val();
+            
+            // Check if custom unit is selected and get the value
+            if (unit === 'custom') {
+                unit = $('#customUnit').val();
+                if (!unit || unit.trim() === '') {
+                    alert('Please enter a custom unit.');
+                    return;
+                }
+            }
+            
+            if (!name || !unit || !price) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // Prepare data for AJAX
+            const data = {
+                name: name,
+                unit: unit,
+                default_price: price,
+                description: description,
+                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+            };
+            
+            // Submit via AJAX
+            $.ajax({
+                url: '{% url "app:item-create" %}',
+                type: 'POST',
+                data: data,
+                success: function(response) {
+                    console.log("Item created:", response);
+                    
+                    // Get the container that triggered this creation
+                    const containerIndex = $('#createItemModal').data('containerIndex');
+                    
+                    // Destroy all existing select2 instances to rebuild them
+                    $('.item-select').each(function() {
+                        if ($(this).hasClass("select2-hidden-accessible")) {
+                            $(this).select2('destroy');
+                        }
+                    });
+                    
+                    // Add new option to all select elements
+                    $('.item-select').each(function() {
+                        const newOption = new Option(response.name, response.id);
+                        // Add data attributes directly to the option element
+                        $(newOption).attr('data-price', response.default_price);
+                        $(newOption).attr('data-unit', response.unit);
+                        
+                        // Add option before the "new" option
+                        const $newItemOption = $(this).find('option[value="new"]');
+                        if ($newItemOption.length) {
+                            $(newOption).insertBefore($newItemOption);
+                        } else {
+                            $(this).append(newOption);
+                        }
+                    });
+                    
+                    // Reinitialize all select2 instances
+                    initializeItemSelects();
+                    
+                    // Select the new item in the dropdown that triggered this
+                    if (containerIndex !== undefined) {
+                        const container = $(`.item-row-container[data-index="${containerIndex}"]`);
+                        const select = container.find('.item-select');
+                        
+                        // Set the value and trigger change event
+                        select.val(response.id).trigger('change');
+                    }
+                    
+                    // Hide modal and reset form
+                    $('#createItemModal').modal('hide');
+                    $('#createItemForm').trigger('reset');
+                    
+                    // Show success message
+                    alert('Item created successfully');
+                },
+                error: function(xhr) {
+                    console.error("Error creating item:", xhr);
+                    alert('Error creating item: ' + xhr.responseText);
+                }
+            });
+        });
+        
+        // Initialize Select2 on unit dropdown
+        $('#itemUnit').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#createItemModal')
+        });
+
+        // Toggle custom unit field visibility - update to work with Select2
+        $('#itemUnit').on('change', function() {
+            if ($(this).val() === 'custom') {
+                $('#customUnit').show().focus();
+            } else {
+                $('#customUnit').hide();
+            }
+        });
+
+        // Clear and hide custom unit field when modal is closed
+        $('#createItemModal').on('hidden.bs.modal', function() {
+            $('#customUnit').val('').hide();
+            $('#itemUnit').val('nos').trigger('change');
+        });
+        
+        // Form validation before submit
         $('#orderForm').on('submit', function(e) {
             e.preventDefault();
             
-            // Validate required fields
             let isValid = true;
             
             // Check customer
@@ -493,72 +736,32 @@
                 return false;
             }
             
-            // Check items
-            $('.item-row').each(function() {
-                const row = $(this);
-                const itemId = row.find('.item-select').val();
-                const quantity = row.find('input[name$="-quantity"]').val();
-                const price = row.find('input[name$="-price"]').val();
+            // Check if there are any items
+            if ($('.item-row-container').length === 0) {
+                alert('Please add at least one item to the order');
+                isValid = false;
+                return false;
+            }
+            
+            // Check each item's details
+            $('.item-row-container').each(function(index) {
+                const container = $(this);
+                const itemId = container.find('input[name$="-item"]').val();
+                const itemName = container.find('.item-name-field').val();
+                const quantity = container.find('input[name$="-quantity"]').val();
+                const price = container.find('input[name$="-price"]').val();
                 
-                if (!itemId || !quantity || !price) {
-                    alert('Please fill in all item details');
+                if (!itemId || !itemName || !quantity || !price) {
+                    alert(`Please complete all required fields for item #${index + 1}`);
                     isValid = false;
                     return false;
                 }
             });
             
-            if (!isValid) return false;
-            
-            // Submit form
-            this.submit();
+            if (isValid) {
+                this.submit();
+            }
         });
-        
-        // Create new item
-        $('#createItemBtn').on('click', function() {
-            const data = {
-                name: $('#itemName').val(),
-                unit: $('#itemUnit').val(),
-                default_price: $('#itemDefaultPrice').val(),
-                description: $('#itemDescription').val(),
-                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
-            };
-            
-            $.ajax({
-                url: '{% url "app:item-create" %}',
-                type: 'POST',
-                data: data,
-                success: function(response) {
-                    // Add new item to all select dropdowns
-                    const newOption = new Option(response.name, response.id, false, false);
-                    $(newOption).data('price', response.default_price);
-                    $(newOption).data('unit', response.unit);
-                    
-                    $('.item-select').each(function() {
-                        // Add the option
-                        $(this).append(newOption.cloneNode(true));
-                    });
-                    
-                    // Select the new item in the dropdown that triggered the creation
-                    const select = $('#createItemModal').data('select');
-                    if (select) {
-                        select.val(response.id).trigger('change');
-                    }
-                    
-                    // Clear and close modal
-                    $('#createItemModal').modal('hide');
-                    $('#createItemForm').trigger('reset');
-                    
-                    // Show success message
-                    alert('Item created successfully');
-                },
-                error: function(xhr) {
-                    alert('Error creating item: ' + xhr.responseText);
-                }
-            });
-        });
-        
-        // Calculate initial total
-        calculateOrderTotal();
     });
 </script>
 {% endblock %} 

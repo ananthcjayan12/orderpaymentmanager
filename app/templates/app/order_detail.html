@@ -31,6 +31,11 @@
                         <dt class="col-sm-4">Order Date</dt>
                         <dd class="col-sm-8">{{ order.order_date }}</dd>
                         
+                        {% if order.delivery_date %}
+                        <dt class="col-sm-4">Delivery Date</dt>
+                        <dd class="col-sm-8">{{ order.delivery_date }}</dd>
+                        {% endif %}
+                        
                         <dt class="col-sm-4">Total Amount</dt>
                         <dd class="col-sm-8">₹{{ order.total_amount|floatformat:2 }}</dd>
                     </dl>

@@ -1,13 +1,15 @@
 from django import forms
 from django.forms import inlineformset_factory
 from .models import Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Customer
+from django.utils import timezone
 
 class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
-        fields = ['customer', 'order_date', 'remarks']
+        fields = ['customer', 'order_date', 'delivery_date', 'remarks']
         widgets = {
             'order_date': forms.DateInput(attrs={'type': 'date'}),
+            'delivery_date': forms.DateInput(attrs={'type': 'date'}),
         }
 
     def __init__(self, *args, company=None, **kwargs):
@@ -17,6 +19,11 @@ class OrderForm(forms.ModelForm):
         if 'initial' in kwargs and 'customer' in kwargs['initial']:
             self.fields['customer'].widget.attrs['readonly'] = True
             self.fields['customer'].disabled = True
+            
+        # Set default date to today
+        today = timezone.localdate()
+        if not self.initial.get('order_date'):
+            self.initial['order_date'] = today
 
 class OrderItemForm(forms.ModelForm):
     class Meta:
@@ -48,6 +55,10 @@ class BulkOrderForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     order_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    delivery_date = forms.DateField(
+        required=False,
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
     remarks = forms.CharField(

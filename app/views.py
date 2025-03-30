@@ -1015,6 +1015,7 @@ class BulkOrderCreateView(LoginRequiredMixin, View):
                 with transaction.atomic():
                     customer = form.cleaned_data['customer']
                     order_date = form.cleaned_data['order_date']
+                    delivery_date = form.cleaned_data.get('delivery_date')  # Optional field
                     remarks = form.cleaned_data['remarks']
                     items_data = json.loads(form.cleaned_data['items_data'])
                     
@@ -1024,6 +1025,7 @@ class BulkOrderCreateView(LoginRequiredMixin, View):
                         company=request.user.company,
                         agent=request.user.agent_profile if hasattr(request.user, 'agent_profile') else None,
                         order_date=order_date,
+                        delivery_date=delivery_date,
                         remarks=remarks
                     )
                     

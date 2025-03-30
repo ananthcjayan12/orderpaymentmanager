@@ -123,6 +123,7 @@ class Order(models.Model):
     )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     order_date = models.DateField()
+    delivery_date = models.DateField(null=True, blank=True, help_text="Date when the order should be delivered (optional)")
     remarks = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
