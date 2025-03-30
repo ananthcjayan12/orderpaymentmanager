@@ -25,7 +25,7 @@ services:
     depends_on:
       - db
     environment:
-      DEBUG: "False"
+      DEBUG: "True"
       DJANGO_SECRET_KEY: "your-secret-key"
       # Database settings (ensure your Django settings respect these variables)
       DATABASE_ENGINE: "django.db.backends.postgresql"

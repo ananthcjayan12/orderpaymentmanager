@@ -3,6 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db.models import Sum, F
 from accounts.models import Company
+from .utils import calculate_total_orders_amount, calculate_total_payments, calculate_customer_balance
 
 class Customer(models.Model):
     """Model for customers."""
@@ -27,13 +28,7 @@ class Customer(models.Model):
     @property
     def outstanding_balance(self):
         """Calculate outstanding balance for the customer."""
-        total_orders = self.orders.aggregate(
-            total=Sum(F('orderitems__quantity') * F('orderitems__price'))
-        )['total'] or 0
-        total_payments = self.payments.aggregate(
-            total=Sum('amount_received')
-        )['total'] or 0
-        return total_orders - total_payments + self.initial_balance
+        return calculate_customer_balance(self)
 
 class Item(models.Model):
     """Model for items."""
