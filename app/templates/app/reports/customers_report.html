@@ -1,0 +1,500 @@
+{% load custom_filters %}
+
+<!-- Customers Report -->
+<div class="row">
+    <!-- Customer Acquisition -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Customer Growth</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">Total Customers</h5>
+                    <div class="d-flex align-items-center">
+                        <h3 class="mb-0 me-2">{{ total_customers }}</h3>
+                        <span class="badge {% if customers_growth >= 5 %}bg-success{% elif customers_growth > 0 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {% if customers_growth > 0 %}+{% endif %}{{ customers_growth|floatformat:1 }}%
+                        </span>
+                    </div>
+                    <p class="text-muted small">Compared to previous period</p>
+                    
+                    <div class="d-flex justify-content-between text-muted mt-3">
+                        <small>New Customers (Period)</small>
+                        <small>{{ new_customers }}</small>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Active Customers</small>
+                        <small>{{ active_customers }} ({{ active_percentage|floatformat:1 }}%)</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5 class="text-muted mb-3">Acquisition Cost</h5>
+                    <h3 class="mb-2">₹{{ customer_acquisition_cost|floatformat:2 }}</h3>
+                    <p class="text-muted small">Average cost to acquire a new customer</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Locations -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Customer Locations</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="locationChart" height="250"></canvas>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th class="text-center">Customers</th>
+                                <th class="text-end">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for location in customer_locations %}
+                            <tr>
+                                <td>{{ location.location }}</td>
+                                <td class="text-center">{{ location.count }}</td>
+                                <td class="text-end">
+                                    {{ location.count|div:total_customers|mul:100|floatformat:1 }}%
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">No location data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Customer Growth -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Customer Growth Trend</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="customerGrowthChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Purchase Stats -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Customer Value Metrics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-muted">Average Order Value</h6>
+                        <h3 class="mb-0">₹{{ avg_order_value|floatformat:2 }}</h3>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar bg-primary" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-muted">Orders per Customer</h6>
+                        <h3 class="mb-0">{{ avg_orders_per_customer|floatformat:1 }}</h3>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-muted">Customer Lifetime Value</h6>
+                        <h3 class="mb-0">₹{{ customer_lifetime_value|floatformat:2 }}</h3>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar bg-info" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-muted">Retention Rate</h6>
+                        <h3 class="mb-0">{{ retention_rate|floatformat:1 }}%</h3>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar bg-warning" style="width: {{ retention_rate }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">Customer Distribution by Type</h6>
+                        <div class="d-flex mb-2">
+                            <div style="width: {{ one_time_percentage }}%; background-color: #6c757d; height: 30px;" class="text-center text-white d-flex align-items-center justify-content-center">
+                                <small>{{ one_time_percentage|floatformat:0 }}% One-time</small>
+                            </div>
+                            <div style="width: {{ repeat_percentage }}%; background-color: #0d6efd; height: 30px;" class="text-center text-white d-flex align-items-center justify-content-center">
+                                <small>{{ repeat_percentage|floatformat:0 }}% Repeat</small>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">{{ one_time_customers }} customers with 1 order</small>
+                            <small class="text-muted">{{ repeat_customers }} customers with 2+ orders</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Balance Stats -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Customer Balance Analysis</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="customerBalanceChart" height="250"></canvas>
+                
+                <div class="table-responsive mt-4">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Balance Range</th>
+                                <th class="text-center">Customers</th>
+                                <th class="text-end">Total Outstanding</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for range in balance_ranges %}
+                            <tr>
+                                <td>{{ range.label }}</td>
+                                <td class="text-center">{{ range.count }}</td>
+                                <td class="text-end">₹{{ range.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">No balance data available</td>
+                            </tr>
+                            {% endfor %}
+                            {% if balance_ranges %}
+                            <tr class="table-light">
+                                <td><strong>Total</strong></td>
+                                <td class="text-center"><strong>{{ total_customers }}</strong></td>
+                                <td class="text-end"><strong>₹{{ total_outstanding|floatformat:2 }}</strong></td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Customers -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Recent Customers</h6>
+                <a href="{% url 'app:download_report' %}?report_type=customers&format=csv" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download"></i> Download CSV
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="customersTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Location</th>
+                                <th>Date Added</th>
+                                <th>Total Orders</th>
+                                <th>Total Spent</th>
+                                <th>Outstanding</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in recent_customers %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'app:customer-detail' customer.id %}">
+                                        {{ customer.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>
+                                    <a href="https://wa.me/{{ customer.phone }}" target="_blank" class="text-success ms-2">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                </td>
+                                <td>{{ customer.location|default:"-" }}</td>
+                                <td>{{ customer.created_at|date:"d M Y" }}</td>
+                                <td>{{ customer.total_orders }}</td>
+                                <td>₹{{ customer.total_spent|floatformat:2 }}</td>
+                                <td>
+                                    <span class="badge {% if customer.calculated_balance > 0 %}bg-warning{% else %}bg-success{% endif %}">
+                                        ₹{{ customer.calculated_balance|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'app:customer-detail' customer.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'app:create-order' %}?customer={{ customer.id }}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-shopping-cart"></i> Order
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-users fa-2x mb-3"></i>
+                                        <p>No customer data available for the selected period</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializeCustomerCharts() {
+    // Customer Growth Chart
+    const growthCtx = document.getElementById('customerGrowthChart').getContext('2d');
+    const growthChart = new Chart(growthCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for month, data in monthly_customers.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'New Customers',
+                data: [
+                    {% for month, data in monthly_customers.items %}
+                        {{ data.new_count|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderColor: '#0d6efd',
+                borderWidth: 2,
+                tension: 0.4
+            }, {
+                label: 'Total Customers',
+                data: [
+                    {% for month, data in monthly_customers.items %}
+                        {{ data.total_count|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                borderColor: '#198754',
+                borderWidth: 2,
+                tension: 0.4,
+                yAxisID: 'total'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed.y + ' customers';
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'New Customers'
+                    }
+                },
+                total: {
+                    beginAtZero: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Total Customers'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+    
+    // Customer Location Chart
+    const locationCtx = document.getElementById('locationChart').getContext('2d');
+    const locationChart = new Chart(locationCtx, {
+        type: 'pie',
+        data: {
+            labels: [
+                {% for location in customer_locations %}
+                    '{{ location.location }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for location in customer_locations %}
+                        {{ location.count }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#0d6efd',
+                    '#198754',
+                    '#6c757d',
+                    '#dc3545',
+                    '#fd7e14',
+                    '#ffc107',
+                    '#0dcaf0',
+                    '#d63384'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw;
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} customers (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Customer Balance Chart
+    const balanceCtx = document.getElementById('customerBalanceChart').getContext('2d');
+    const balanceChart = new Chart(balanceCtx, {
+        type: 'bar',
+        data: {
+            labels: [
+                {% for range in balance_ranges %}
+                    '{{ range.label }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Number of Customers',
+                data: [
+                    {% for range in balance_ranges %}
+                        {{ range.count }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                borderColor: '#0d6efd',
+                borderWidth: 1
+            }, {
+                label: 'Total Balance',
+                data: [
+                    {% for range in balance_ranges %}
+                        {{ range.total }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                borderColor: '#dc3545',
+                borderWidth: 1,
+                yAxisID: 'balance'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.datasetIndex === 0) {
+                                label += context.parsed.y + ' customers';
+                            } else {
+                                label += new Intl.NumberFormat('en-IN', { 
+                                    style: 'currency', 
+                                    currency: 'INR',
+                                    maximumFractionDigits: 0
+                                }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Number of Customers'
+                    }
+                },
+                balance: {
+                    beginAtZero: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Total Balance (₹)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize DataTable for better sorting and filtering
+$(document).ready(function() {
+    if($.fn.DataTable) {
+        $('#customersTable').DataTable({
+            order: [[3, 'desc']], // Sort by date added
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            responsive: true
+        });
+    }
+});
+</script> 

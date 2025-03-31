@@ -1,0 +1,347 @@
+{% load custom_filters %}
+
+<!-- Defaulters Report -->
+<div class="row">
+    <!-- Defaulters Summary -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Defaulters Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">Total Defaulted Amount</h5>
+                    <h3 class="mb-2">₹{{ total_defaulted|floatformat:2 }}</h3>
+                    <p class="text-muted small">{{ defaulters_count }} customers with overdue payments</p>
+                    
+                    <div class="d-flex justify-content-between text-muted mt-3">
+                        <small>% of Total Due</small>
+                        <small>
+                            {% with percent=total_defaulted|default:0|div:total_outstanding|default:1|mul:100 %}
+                            {{ percent|floatformat:1 }}%
+                            {% endwith %}
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Average Overdue</small>
+                        <small>₹{{ avg_defaulted_amount|floatformat:2 }}</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5 class="text-muted mb-3">Defaulter Categories</h5>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar bg-warning" 
+                             role="progressbar" 
+                             style="width: {{ mild_defaulters_percent|floatformat:0 }}%;" 
+                             aria-valuenow="{{ mild_defaulters_percent|floatformat:0 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ mild_defaulters_percent|floatformat:0 }}%
+                        </div>
+                        <div class="progress-bar bg-danger" 
+                             role="progressbar" 
+                             style="width: {{ severe_defaulters_percent|floatformat:0 }}%;" 
+                             aria-valuenow="{{ severe_defaulters_percent|floatformat:0 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ severe_defaulters_percent|floatformat:0 }}%
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-2">
+                        <small>
+                            <span class="badge bg-warning">Mild</span> 
+                            1-30 days ({{ mild_defaulters_count }})
+                        </small>
+                        <small>
+                            <span class="badge bg-danger">Severe</span>
+                            >30 days ({{ severe_defaulters_count }})
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Defaulters Trend -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Default Trend</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="defaultersTrendChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Default Type Distribution -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Default Type Distribution</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="defaultTypeChart" height="250"></canvas>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Default Type</th>
+                                <th class="text-center">Count</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>EMI Default</td>
+                                <td class="text-center">{{ emi_defaulters_count }}</td>
+                                <td class="text-end">₹{{ emi_defaulted_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Ready Cash Default</td>
+                                <td class="text-center">{{ rc_defaulters_count }}</td>
+                                <td class="text-end">₹{{ rc_defaulted_amount|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Defaulters List -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Defaulters List</h6>
+                <a href="{% url 'app:download_report' %}?report_type=defaulters&format=csv" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download"></i> Download CSV
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="defaultersTable">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Phone</th>
+                                <th>Default Type</th>
+                                <th>Days Overdue</th>
+                                <th>Defaulted Amount</th>
+                                <th>Default %</th>
+                                <th>Agent</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for defaulter in defaulters %}
+                            <tr class="{% if defaulter.days_overdue > 30 %}table-danger{% elif defaulter.days_overdue > 15 %}table-warning{% endif %}">
+                                <td>
+                                    <a href="{% url 'app:customer-detail' defaulter.id %}">
+                                        {{ defaulter.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="tel:{{ defaulter.phone }}">{{ defaulter.phone }}</a>
+                                    <a href="https://wa.me/{{ defaulter.phone }}" target="_blank" class="text-success ms-2">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if defaulter.default_info.type == 'EMI' %}
+                                    <span class="badge bg-primary">EMI Default</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Ready Cash</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill {% if defaulter.days_overdue > 30 %}bg-danger{% elif defaulter.days_overdue > 15 %}bg-warning{% else %}bg-warning text-dark{% endif %}">
+                                        {{ defaulter.days_overdue }} days
+                                    </span>
+                                </td>
+                                <td>₹{{ defaulter.defaulted_amount|floatformat:2 }}</td>
+                                <td>
+                                    {% with percent=defaulter.defaulted_amount|div:defaulter.total_balance|mul:100 %}
+                                    {{ percent|floatformat:1 }}%
+                                    {% endwith %}
+                                </td>
+                                <td>{{ defaulter.agent.username|default:"" }}</td>
+                                <td>
+                                    <a href="{% url 'app:customer-detail' defaulter.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'app:collect-payment' %}?customer={{ defaulter.id }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-money-bill-wave"></i> Collect
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-check-circle fa-2x mb-3"></i>
+                                        <p>No defaulters for the selected period</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializeDefaultersCharts() {
+    // Monthly Defaulters Trend Chart
+    const trendCtx = document.getElementById('defaultersTrendChart').getContext('2d');
+    const trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for month, data in monthly_defaults.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Defaulted Amount',
+                data: [
+                    {% for month, data in monthly_defaults.items %}
+                        {{ data.amount|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                borderColor: '#dc3545',
+                borderWidth: 2,
+                tension: 0.3
+            }, {
+                label: 'Defaulter Count',
+                data: [
+                    {% for month, data in monthly_defaults.items %}
+                        {{ data.count|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                borderColor: '#ffc107',
+                borderWidth: 2,
+                tension: 0.3,
+                yAxisID: 'count'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.datasetIndex === 0) {
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('en-IN', { 
+                                        style: 'currency', 
+                                        currency: 'INR',
+                                        maximumFractionDigits: 0
+                                    }).format(context.parsed.y);
+                                }
+                            } else {
+                                label += context.parsed.y + ' customers';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Amount (₹)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                },
+                count: {
+                    beginAtZero: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Number of Defaulters'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+    
+    // Default Type Chart
+    const typeCtx = document.getElementById('defaultTypeChart').getContext('2d');
+    const typeChart = new Chart(typeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['EMI Default', 'Ready Cash Default'],
+            datasets: [{
+                data: [
+                    {{ emi_defaulted_amount|default:0 }},
+                    {{ rc_defaulted_amount|default:0 }}
+                ],
+                backgroundColor: [
+                    '#0d6efd',
+                    '#6c757d'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw;
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ₹${value.toLocaleString()} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize DataTable for better sorting and filtering
+$(document).ready(function() {
+    if($.fn.DataTable) {
+        $('#defaultersTable').DataTable({
+            order: [[3, 'desc']], // Sort by days overdue
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            responsive: true
+        });
+    }
+});
+</script> 

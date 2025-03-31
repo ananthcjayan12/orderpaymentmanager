@@ -1,0 +1,268 @@
+{% load custom_filters %}
+
+<!-- Sales Report -->
+<div class="row">
+    <!-- Sales by Order Type -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Sales by Order Type</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order Type</th>
+                                <th class="text-center">Count</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary me-2">B2C</span>
+                                    Ready Cash
+                                </td>
+                                <td class="text-center">{{ b2c_ready_cash_count|default:0 }}</td>
+                                <td class="text-end">₹{{ b2c_ready_cash_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="badge bg-info me-2">B2C</span>
+                                    EMI
+                                </td>
+                                <td class="text-center">{{ b2c_emi_count|default:0 }}</td>
+                                <td class="text-end">₹{{ b2c_emi_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary me-2">B2B</span>
+                                    Ready Cash
+                                </td>
+                                <td class="text-center">{{ b2b_ready_cash_count|default:0 }}</td>
+                                <td class="text-end">₹{{ b2b_ready_cash_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span class="badge bg-dark me-2">B2B</span>
+                                    EMI
+                                </td>
+                                <td class="text-center">{{ b2b_emi_count|default:0 }}</td>
+                                <td class="text-end">₹{{ b2b_emi_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-center">{{ total_orders|default:0 }}</td>
+                                <td class="text-end">₹{{ total_order_amount|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Order Type Distribution Chart -->
+                <div class="mt-4">
+                    <h6 class="text-muted mb-3">Order Distribution</h6>
+                    <canvas id="orderTypeChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Sales Trend -->
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Monthly Sales Trend</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="salesChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Selling Products -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Top Selling Products</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Product Name</th>
+                                <th class="text-center">Quantity Sold</th>
+                                <th class="text-end">Total Amount</th>
+                                <th class="text-end">Avg. Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_items %}
+                            <tr>
+                                <td>{{ item.item_name }}</td>
+                                <td class="text-center">{{ item.total_quantity|floatformat:2 }}</td>
+                                <td class="text-end">₹{{ item.total_amount|floatformat:2 }}</td>
+                                <td class="text-end">₹{{ item.total_amount|div:item.total_quantity|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-box fa-2x mb-3"></i>
+                                        <p>No product sales data available for the selected period</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializeSalesChart() {
+    // Monthly Sales Trend Chart
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    const salesChart = new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for month, data in monthly_sales.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Sales Amount',
+                data: [
+                    {% for month, data in monthly_sales.items %}
+                        {{ data.amount|default:0 }},
+                    {% endfor %}
+                ],
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'Order Count',
+                data: [
+                    {% for month, data in monthly_sales.items %}
+                        {{ data.count|default:0 }},
+                    {% endfor %}
+                ],
+                borderColor: '#198754',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.datasetIndex === 0) {
+                                label += '₹' + context.raw.toFixed(2);
+                            } else {
+                                label += context.raw;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Amount (₹)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Orders'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+    
+    // Order Type Distribution Chart
+    const orderTypeCtx = document.getElementById('orderTypeChart').getContext('2d');
+    const orderTypeChart = new Chart(orderTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['B2C Ready Cash', 'B2C EMI', 'B2B Ready Cash', 'B2B EMI'],
+            datasets: [{
+                data: [
+                    {{ b2c_ready_cash_amount|default:0 }},
+                    {{ b2c_emi_amount|default:0 }},
+                    {{ b2b_ready_cash_amount|default:0 }},
+                    {{ b2b_emi_amount|default:0 }}
+                ],
+                backgroundColor: [
+                    '#0d6efd',  // Primary
+                    '#0dcaf0',  // Info
+                    '#6c757d',  // Secondary
+                    '#343a40'   // Dark
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw;
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+        }
+    });
+}
+</script> 

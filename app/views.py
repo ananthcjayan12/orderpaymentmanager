@@ -2072,3 +2072,525 @@ def bank_delete(request, pk):
             messages.error(request, f"Error deleting bank account: {str(e)}")
     
     return redirect('app:bank-list')
+
+def get_date_range(timeframe, request):
+    """Helper function to calculate date range based on timeframe selection."""
+    today = timezone.now().date()
+    
+    if timeframe == 'daily':
+        # Today only
+        start_date = today
+        end_date = today
+    elif timeframe == 'weekly':
+        # Current week (starting from Monday)
+        start_date = today - timezone.timedelta(days=today.weekday())
+        end_date = today
+    elif timeframe == 'monthly':
+        # Current month
+        start_date = today.replace(day=1)
+        end_date = today
+    elif timeframe == 'yearly':
+        # Current year
+        start_date = today.replace(month=1, day=1)
+        end_date = today
+    elif timeframe == 'custom' and request.GET.get('start_date') and request.GET.get('end_date'):
+        # Custom date range provided by user
+        try:
+            start_date = datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').date()
+            end_date = datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').date()
+        except ValueError:
+            # Fall back to all-time if dates are invalid
+            start_date = None
+            end_date = today
+    else:
+        # Default to all-time
+        start_date = None
+        end_date = today
+    
+    return start_date, end_date
+
+@login_required
+def report_dashboard(request):
+    """
+    Main reports dashboard view that provides access to all reports.
+    """
+    company = request.user.company
+    today = timezone.localdate()
+    
+    # Get date range for filtering
+    timeframe = request.GET.get('timeframe', 'monthly')
+    start_date, end_date = get_date_range(timeframe, request)
+    
+    # Initialize context with date information
+    context = {
+        'timeframe': timeframe,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    
+    # Get report type if specified
+    report_type = request.GET.get('report_type', 'overview')
+    context['report_type'] = report_type
+    
+    # --- OVERVIEW METRICS (shown on all reports) ---
+    customers = Customer.objects.filter(company=company)
+    orders = Order.objects.filter(company=company)
+    payments = Payment.objects.filter(company=company)
+    
+    if timeframe != 'all':
+        orders = orders.filter(order_date__gte=start_date, order_date__lte=end_date)
+        payments = payments.filter(payment_date__gte=start_date, payment_date__lte=end_date)
+        
+    # Basic metrics
+    total_customers = customers.count()
+    total_orders = orders.count()
+    
+    total_order_amount = calculate_total_orders_amount(orders)
+    total_collected = calculate_total_payments(payments)
+    pending_collections = total_order_amount - total_collected
+    
+    # Add basic metrics to context
+    context.update({
+        'total_customers': total_customers,
+        'total_orders': total_orders,
+        'total_order_amount': total_order_amount,
+        'total_collected': total_collected,
+        'pending_collections': pending_collections,
+    })
+
+    # --- SALES REPORT ---
+    if report_type == 'sales':
+        # Get orders by type
+        b2c_ready_cash = orders.filter(order_type='B2C_READY_CASH')
+        b2c_emi = orders.filter(order_type='B2C_EMI')
+        b2b_ready_cash = orders.filter(order_type='B2B_READY_CASH')
+        b2b_emi = orders.filter(order_type='B2B_EMI')
+        
+        # Calculate amounts by order type
+        b2c_ready_cash_amount = calculate_total_orders_amount(b2c_ready_cash)
+        b2c_emi_amount = calculate_total_orders_amount(b2c_emi)
+        b2b_ready_cash_amount = calculate_total_orders_amount(b2b_ready_cash)
+        b2b_emi_amount = calculate_total_orders_amount(b2b_emi)
+        
+        # Monthly sales trend 
+        monthly_sales = {}
+        
+        # Start from 11 months ago to include current month (12 months total)
+        for i in range(11, -1, -1):
+            month_date = today.replace(day=1) - timezone.timedelta(days=i*30)
+            month_start = month_date.replace(day=1)
+            
+            # Calculate end of month
+            if month_date.month == 12:
+                month_end = month_date.replace(year=month_date.year+1, month=1, day=1) - timezone.timedelta(days=1)
+            else:
+                month_end = month_date.replace(month=month_date.month+1, day=1) - timezone.timedelta(days=1)
+                
+            month_orders = orders.filter(order_date__gte=month_start, order_date__lte=month_end)
+            month_amount = calculate_total_orders_amount(month_orders)
+            
+            month_key = month_date.strftime('%b %Y')
+            monthly_sales[month_key] = {
+                'amount': month_amount,
+                'count': month_orders.count()
+            }
+        
+        # Top selling products/items
+        top_items = OrderItem.objects.filter(
+            order__company=company
+        ).values('item_name').annotate(
+            total_quantity=Sum('quantity'),
+            total_amount=Sum(F('quantity') * F('price'))
+        ).order_by('-total_amount')[:10]
+        
+        context.update({
+            'b2c_ready_cash_count': b2c_ready_cash.count(),
+            'b2c_emi_count': b2c_emi.count(),
+            'b2b_ready_cash_count': b2b_ready_cash.count(),
+            'b2b_emi_count': b2b_emi.count(),
+            'b2c_ready_cash_amount': b2c_ready_cash_amount,
+            'b2c_emi_amount': b2c_emi_amount,
+            'b2b_ready_cash_amount': b2b_ready_cash_amount,
+            'b2b_emi_amount': b2b_emi_amount,
+            'monthly_sales': monthly_sales,
+            'top_items': top_items,
+        })
+    
+    # --- COLLECTION REPORT ---
+    elif report_type == 'collections':
+        # Monthly collection trend
+        monthly_collections = {}
+        
+        for i in range(11, -1, -1):
+            month_date = today.replace(day=1) - timezone.timedelta(days=i*30)
+            month_start = month_date.replace(day=1)
+            
+            # Calculate end of month
+            if month_date.month == 12:
+                month_end = month_date.replace(year=month_date.year+1, month=1, day=1) - timezone.timedelta(days=1)
+            else:
+                month_end = month_date.replace(month=month_date.month+1, day=1) - timezone.timedelta(days=1)
+                
+            month_payments = payments.filter(payment_date__gte=month_start, payment_date__lte=month_end)
+            month_amount = calculate_total_payments(month_payments)
+            
+            month_key = month_date.strftime('%b %Y')
+            monthly_collections[month_key] = {
+                'amount': month_amount,
+                'count': month_payments.count()
+            }
+        
+        # Collection efficiency
+        total_due = total_order_amount
+        collection_efficiency = (total_collected / total_due * 100) if total_due > 0 else 0
+        
+        # Get recent payments
+        recent_payments = payments.order_by('-payment_date')[:20]
+        
+        # Get bank-wise collections
+        bank_collections = payments.values('bank__name').annotate(
+            total=Sum('amount_received'),
+            count=Count('id')
+        ).order_by('-total')
+        
+        # Calculate days-to-collection average
+        collection_days = []
+        for payment in payments:
+            # Find associated orders
+            order_payments = payment.order_payments.all()
+            for op in order_payments:
+                if op.order.order_date and payment.payment_date:
+                    days = (payment.payment_date - op.order.order_date.date()).days
+                    collection_days.append(days)
+        
+        avg_collection_days = sum(collection_days) / len(collection_days) if collection_days else 0
+        
+        context.update({
+            'monthly_collections': monthly_collections,
+            'collection_efficiency': collection_efficiency,
+            'recent_payments': recent_payments,
+            'bank_collections': bank_collections,
+            'avg_collection_days': avg_collection_days,
+        })
+    
+    # --- DEFAULTER REPORT ---
+    elif report_type == 'defaulters':
+        # Get defaulters using our improved logic
+        defaulters = []
+        defaulter_data = {'ready_cash': 0, 'emi': 0}
+        
+        for customer in customers:
+            is_defaulter = False
+            overdue_amount = 0
+            default_types = set()
+            max_days_overdue = 0
+            
+            customer_orders = orders.filter(customer=customer)
+            
+            for order in customer_orders:
+                if order.order_type in ['B2C_READY_CASH', 'B2B_READY_CASH']:
+                    total_paid = Payment.objects.filter(
+                        customer=customer,
+                        orders=order
+                    ).aggregate(Sum('amount_received'))['amount_received__sum'] or 0
+                    
+                    if total_paid < order.total_amount:
+                        is_defaulter = True
+                        overdue_amount += order.total_amount - total_paid
+                        default_types.add('ready_cash')
+                
+                elif order.order_type in ['B2C_EMI', 'B2B_EMI']:
+                    overdue_installments = order.order_payments.filter(
+                        status__in=['pending', 'partial'],
+                        due_date__lt=today
+                    )
+                    
+                    if overdue_installments.exists():
+                        is_defaulter = True
+                        default_types.add('emi')
+                        
+                        for installment in overdue_installments:
+                            overdue_amount += installment.remaining_amount
+                            days_overdue = (today - installment.due_date).days
+                            max_days_overdue = max(max_days_overdue, days_overdue)
+            
+            if is_defaulter and overdue_amount > 0:
+                customer.calculated_balance = overdue_amount
+                customer.default_info = {
+                    'types': list(default_types),
+                    'max_days_overdue': max_days_overdue
+                }
+                defaulters.append(customer)
+                
+                # Count defaulters by type
+                if 'ready_cash' in default_types:
+                    defaulter_data['ready_cash'] += 1
+                if 'emi' in default_types:
+                    defaulter_data['emi'] += 1
+        
+        # Sort defaulters by overdue amount (highest first)
+        defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
+        
+        # Calculate aging analysis
+        aging_buckets = {
+            '1-30': {'count': 0, 'amount': 0},
+            '31-60': {'count': 0, 'amount': 0},
+            '61-90': {'count': 0, 'amount': 0},
+            '90+': {'count': 0, 'amount': 0},
+        }
+        
+        for customer in defaulters:
+            days = customer.default_info.get('max_days_overdue', 0)
+            amount = customer.calculated_balance
+            
+            if days <= 30:
+                aging_buckets['1-30']['count'] += 1
+                aging_buckets['1-30']['amount'] += amount
+            elif days <= 60:
+                aging_buckets['31-60']['count'] += 1
+                aging_buckets['31-60']['amount'] += amount
+            elif days <= 90:
+                aging_buckets['61-90']['count'] += 1
+                aging_buckets['61-90']['amount'] += amount
+            else:
+                aging_buckets['90+']['count'] += 1
+                aging_buckets['90+']['amount'] += amount
+        
+        context.update({
+            'defaulters': defaulters,
+            'defaulter_data': defaulter_data,
+            'aging_buckets': aging_buckets,
+            'total_defaulters': len(defaulters),
+            'total_overdue_amount': sum(c.calculated_balance for c in defaulters),
+        })
+    
+    # --- CUSTOMER REPORT ---
+    elif report_type == 'customers':
+        # New vs Existing customers
+        if timeframe != 'all':
+            new_customers = customers.filter(created_at__gte=start_date, created_at__lte=end_date)
+            existing_customers = customers.filter(created_at__lt=start_date)
+        else:
+            # In "all time" view, all customers are considered new
+            new_customers = customers
+            existing_customers = Customer.objects.none()
+        
+        # Top customers by order value
+        top_customers_by_value = customers.annotate(
+            order_total=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('orders__orderitems__quantity') * F('orders__orderitems__price'),
+                        output_field=DecimalField(max_digits=10, decimal_places=2)
+                    )
+                ),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))
+            )
+        ).order_by('-order_total')[:10]
+        
+        # Top customers by order count
+        top_customers_by_count = customers.annotate(
+            order_count=Count('orders')
+        ).order_by('-order_count')[:10]
+        
+        # Customers by location
+        customers_by_location = customers.values('location').annotate(
+            count=Count('id')
+        ).order_by('-count')
+        
+        context.update({
+            'new_customers': new_customers,
+            'new_customers_count': new_customers.count(),
+            'existing_customers_count': existing_customers.count(),
+            'top_customers_by_value': top_customers_by_value,
+            'top_customers_by_count': top_customers_by_count,
+            'customers_by_location': customers_by_location,
+        })
+    
+    # --- AGENT PERFORMANCE REPORT ---
+    elif report_type == 'agents':
+        # Only show for company admins
+        if request.user.user_type == 'COMPANY_ADMIN':
+            agents = Agent.objects.filter(company=company)
+            agent_performance = []
+            
+            for agent in agents:
+                if hasattr(agent, 'user') and agent.user is not None:
+                    agent_orders = orders.filter(agent=agent.user)
+                    agent_payments = payments.filter(agent=agent.user)
+                    
+                    # Calculate metrics
+                    orders_amount = calculate_total_orders_amount(agent_orders)
+                    collections = calculate_total_payments(agent_payments)
+                    collection_percentage = (collections / orders_amount * 100) if orders_amount > 0 else 0
+                    
+                    # Get agent name
+                    agent_name = agent.full_name or (agent.user.username if agent.user else "Unknown Agent")
+                    
+                    agent_performance.append({
+                        'agent': agent.user,
+                        'name': agent_name,
+                        'orders_count': agent_orders.count(),
+                        'orders_amount': orders_amount,
+                        'collections': collections,
+                        'pending': max(0, orders_amount - collections),
+                        'collection_percentage': min(100, collection_percentage),
+                        'last_active': agent.user.last_login or agent.created_at,
+                    })
+            
+            # Sort by collection percentage (descending)
+            agent_performance.sort(key=lambda x: x['collection_percentage'], reverse=True)
+            
+            context['agent_performance'] = agent_performance
+    
+    # Check if this is a download request
+    if 'download' in request.GET:
+        format = request.GET.get('format', 'csv')
+        return generate_report_download(report_type, context, format)
+    
+    # Add helper functions for report calculations
+    context.update({
+        'calculate_total_orders_amount': calculate_total_orders_amount,
+        'calculate_total_payments': calculate_total_payments,
+    })
+    
+    # Return appropriate template
+    return render(request, 'app/reports/report_dashboard.html', context)
+
+def generate_report_download(report_type, context, format='csv'):
+    """Generate downloadable report file based on report type and format."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
+    
+    writer = csv.writer(response)
+    
+    # Write headers and data based on report type
+    if report_type == 'sales':
+        writer.writerow(['Sales Report', f"Period: {context['start_date']} to {context['end_date']}"])
+        writer.writerow([])
+        
+        writer.writerow(['Order Type', 'Count', 'Amount'])
+        writer.writerow(['B2C Ready Cash', context.get('b2c_ready_cash_count', 0), context.get('b2c_ready_cash_amount', 0)])
+        writer.writerow(['B2C EMI', context.get('b2c_emi_count', 0), context.get('b2c_emi_amount', 0)])
+        writer.writerow(['B2B Ready Cash', context.get('b2b_ready_cash_count', 0), context.get('b2b_ready_cash_amount', 0)])
+        writer.writerow(['B2B EMI', context.get('b2b_emi_count', 0), context.get('b2b_emi_amount', 0)])
+        writer.writerow(['Total', context.get('total_orders', 0), context.get('total_order_amount', 0)])
+        
+        writer.writerow([])
+        writer.writerow(['Monthly Sales Trend'])
+        writer.writerow(['Month', 'Orders', 'Amount'])
+        
+        for month, data in context.get('monthly_sales', {}).items():
+            writer.writerow([month, data['count'], data['amount']])
+            
+        writer.writerow([])
+        writer.writerow(['Top Selling Products'])
+        writer.writerow(['Item Name', 'Quantity Sold', 'Total Amount'])
+        
+        for item in context.get('top_items', []):
+            writer.writerow([item['item_name'], item['total_quantity'], item['total_amount']])
+    
+    elif report_type == 'collections':
+        writer.writerow(['Collections Report', f"Period: {context['start_date']} to {context['end_date']}"])
+        writer.writerow([])
+        
+        writer.writerow(['Collection Summary'])
+        writer.writerow(['Total Collections', context.get('total_collected', 0)])
+        writer.writerow(['Total Due', context.get('total_order_amount', 0)])
+        writer.writerow(['Collection Efficiency', f"{context.get('collection_efficiency', 0):.2f}%"])
+        writer.writerow(['Average Days to Collection', f"{context.get('avg_collection_days', 0):.1f} days"])
+        
+        writer.writerow([])
+        writer.writerow(['Monthly Collection Trend'])
+        writer.writerow(['Month', 'Payments', 'Amount'])
+        
+        for month, data in context.get('monthly_collections', {}).items():
+            writer.writerow([month, data['count'], data['amount']])
+            
+        writer.writerow([])
+        writer.writerow(['Bank-wise Collections'])
+        writer.writerow(['Bank', 'Payments Count', 'Amount'])
+        
+        for bank in context.get('bank_collections', []):
+            writer.writerow([bank['bank__name'] or 'Unknown', bank['count'], bank['total']])
+    
+    elif report_type == 'defaulters':
+        writer.writerow(['Defaulters Report', f"As of: {timezone.localdate()}"])
+        writer.writerow([])
+        
+        writer.writerow(['Defaulter Summary'])
+        writer.writerow(['Total Defaulters', context.get('total_defaulters', 0)])
+        writer.writerow(['Ready Cash Defaulters', context.get('defaulter_data', {}).get('ready_cash', 0)])
+        writer.writerow(['EMI Defaulters', context.get('defaulter_data', {}).get('emi', 0)])
+        writer.writerow(['Total Overdue Amount', context.get('total_overdue_amount', 0)])
+        
+        writer.writerow([])
+        writer.writerow(['Aging Analysis'])
+        writer.writerow(['Age Bucket', 'Count', 'Amount'])
+        
+        for bucket, data in context.get('aging_buckets', {}).items():
+            writer.writerow([bucket, data['count'], data['amount']])
+            
+        writer.writerow([])
+        writer.writerow(['Defaulter Details'])
+        writer.writerow(['Customer Name', 'Mobile', 'Location', 'Default Type', 'Days Overdue', 'Overdue Amount'])
+        
+        for customer in context.get('defaulters', []):
+            default_types = ', '.join(customer.default_info.get('types', []))
+            days_overdue = customer.default_info.get('max_days_overdue', 0)
+            writer.writerow([
+                customer.name,
+                customer.mobile1,
+                customer.location,
+                default_types,
+                days_overdue,
+                customer.calculated_balance
+            ])
+            
+    elif report_type == 'customers':
+        writer.writerow(['Customer Report', f"Period: {context['start_date']} to {context['end_date']}"])
+        writer.writerow([])
+        
+        writer.writerow(['Customer Summary'])
+        writer.writerow(['Total Customers', context.get('total_customers', 0)])
+        writer.writerow(['New Customers', context.get('new_customers_count', 0)])
+        writer.writerow(['Existing Customers', context.get('existing_customers_count', 0)])
+        
+        writer.writerow([])
+        writer.writerow(['Top Customers by Order Value'])
+        writer.writerow(['Customer Name', 'Mobile', 'Location', 'Total Order Value'])
+        
+        for customer in context.get('top_customers_by_value', []):
+            writer.writerow([customer.name, customer.mobile1, customer.location, customer.order_total])
+            
+        writer.writerow([])
+        writer.writerow(['Top Customers by Order Count'])
+        writer.writerow(['Customer Name', 'Mobile', 'Location', 'Order Count'])
+        
+        for customer in context.get('top_customers_by_count', []):
+            writer.writerow([customer.name, customer.mobile1, customer.location, customer.order_count])
+            
+        writer.writerow([])
+        writer.writerow(['Customers by Location'])
+        writer.writerow(['Location', 'Customer Count'])
+        
+        for location in context.get('customers_by_location', []):
+            writer.writerow([location['location'] or 'Unknown', location['count']])
+            
+    elif report_type == 'agents':
+        writer.writerow(['Agent Performance Report', f"Period: {context['start_date']} to {context['end_date']}"])
+        writer.writerow([])
+        
+        writer.writerow(['Agent Details', 'Orders', 'Orders Amount', 'Collections', 'Pending', 'Collection %'])
+        
+        for agent in context.get('agent_performance', []):
+            writer.writerow([
+                agent['name'],
+                agent['orders_count'],
+                agent['orders_amount'],
+                agent['collections'],
+                agent['pending'],
+                f"{agent['collection_percentage']:.2f}%"
+            ])
+    
+    return response

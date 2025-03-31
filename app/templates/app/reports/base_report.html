@@ -1,0 +1,204 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Reports | {{ company_name }}{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<!-- DataTables for better table sorting/filtering -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.2/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.2/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.2/js/dataTables.bootstrap5.min.js"></script>
+
+<style>
+    .report-nav .nav-link {
+        padding: 0.75rem 1rem;
+        border-radius: 0;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .report-nav .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+    }
+    
+    .report-nav .nav-link:hover:not(.active) {
+        color: #495057;
+        border-bottom-color: #dee2e6;
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .container-fluid {
+            padding: 0 !important;
+        }
+        body {
+            padding: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h4 class="mb-0">Reports & Analytics</h4>
+            <p class="text-muted">Track and analyze your business performance</p>
+        </div>
+        <div class="col-auto">
+            <div class="d-flex gap-2 no-print">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="timeframeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="far fa-calendar-alt me-1"></i>
+                        {% if timeframe == 'daily' %}
+                            Today
+                        {% elif timeframe == 'weekly' %}
+                            This Week
+                        {% elif timeframe == 'monthly' %}
+                            This Month
+                        {% elif timeframe == 'yearly' %}
+                            This Year
+                        {% elif timeframe == 'custom' %}
+                            Custom Range
+                        {% else %}
+                            All Time
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="timeframeDropdown">
+                        <li><a class="dropdown-item {% if timeframe == 'daily' %}active{% endif %}" href="?timeframe=daily{% if report_type %}&report_type={{ report_type }}{% endif %}">Today</a></li>
+                        <li><a class="dropdown-item {% if timeframe == 'weekly' %}active{% endif %}" href="?timeframe=weekly{% if report_type %}&report_type={{ report_type }}{% endif %}">This Week</a></li>
+                        <li><a class="dropdown-item {% if timeframe == 'monthly' %}active{% endif %}" href="?timeframe=monthly{% if report_type %}&report_type={{ report_type }}{% endif %}">This Month</a></li>
+                        <li><a class="dropdown-item {% if timeframe == 'yearly' %}active{% endif %}" href="?timeframe=yearly{% if report_type %}&report_type={{ report_type }}{% endif %}">This Year</a></li>
+                        <li><a class="dropdown-item {% if timeframe == 'all' %}active{% endif %}" href="?timeframe=all{% if report_type %}&report_type={{ report_type }}{% endif %}">All Time</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <div class="px-3 py-2">
+                                <form method="get" action="">
+                                    {% if report_type %}
+                                    <input type="hidden" name="report_type" value="{{ report_type }}">
+                                    {% endif %}
+                                    <input type="hidden" name="timeframe" value="custom">
+                                    <div class="mb-2">
+                                        <label for="start_date" class="form-label small">Start Date</label>
+                                        <input type="date" class="form-control form-control-sm" name="start_date" id="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="end_date" class="form-label small">End Date</label>
+                                        <input type="date" class="form-control form-control-sm" name="end_date" id="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
+                                </form>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <button onclick="window.print()" class="btn btn-light" title="Print Report">
+                    <i class="fas fa-print"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Navigation -->
+    <div class="mb-4 border-bottom no-print">
+        <ul class="nav report-nav">
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'overview' or not report_type %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=overview{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-chart-pie me-1"></i> Overview
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'sales' %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=sales{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-shopping-cart me-1"></i> Sales
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'collections' %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=collections{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-money-bill-wave me-1"></i> Collections
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'defaulters' %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=defaulters{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-exclamation-triangle me-1"></i> Defaulters
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'customers' %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=customers{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-users me-1"></i> Customers
+                </a>
+            </li>
+            {% if user.user_type == 'COMPANY_ADMIN' %}
+            <li class="nav-item">
+                <a class="nav-link {% if report_type == 'agents' %}active{% endif %}" 
+                   href="{% url 'app:reports' %}?report_type=agents{% if timeframe %}&timeframe={{ timeframe }}{% endif %}{% if timeframe == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}">
+                    <i class="fas fa-user-tie me-1"></i> Agent Performance
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    
+    <!-- Report Content -->
+    <div class="report-content">
+        {% if report_type == 'sales' %}
+            {% include 'app/reports/sales_report.html' %}
+        {% elif report_type == 'collections' %}
+            {% include 'app/reports/collections_report.html' %}
+        {% elif report_type == 'defaulters' %}
+            {% include 'app/reports/defaulters_report.html' %}
+        {% elif report_type == 'customers' %}
+            {% include 'app/reports/customers_report.html' %}
+        {% elif report_type == 'agents' %}
+            {% include 'app/reports/agent_report.html' %}
+        {% else %}
+            {% include 'app/reports/overview_report.html' %}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Initialize all charts based on the active report type
+document.addEventListener('DOMContentLoaded', function() {
+    // Sales Report
+    if (document.getElementById('salesChart') && typeof initializeSalesCharts === 'function') {
+        initializeSalesCharts();
+    }
+    
+    // Collections Report
+    if (document.getElementById('collectionsChart') && typeof initializeCollectionsChart === 'function') {
+        initializeCollectionsChart();
+    }
+    
+    // Defaulters Report
+    if (document.getElementById('defaultersTrendChart') && typeof initializeDefaultersCharts === 'function') {
+        initializeDefaultersCharts();
+    }
+    
+    // Customers Report
+    if (document.getElementById('customerGrowthChart') && typeof initializeCustomerCharts === 'function') {
+        initializeCustomerCharts();
+    }
+    
+    // Agent Report
+    if (document.getElementById('agentPerformanceChart') && typeof initializeAgentCharts === 'function') {
+        initializeAgentCharts();
+    }
+});
+</script>
+{% endblock %} 

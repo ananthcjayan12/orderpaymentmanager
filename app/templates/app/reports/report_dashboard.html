@@ -1,0 +1,243 @@
+{% extends 'app/reports/base_report.html' %}
+
+{% block title %}Reports Dashboard | {{ company_name }}{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid py-4">
+    <!-- Report Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h4 class="mb-0">Reports Dashboard</h4>
+                        <div class="d-flex gap-2">
+                            <!-- Time Filter Controls -->
+                            <form method="get" class="d-flex align-items-center">
+                                <input type="hidden" name="report_type" value="{{ report_type }}">
+                                <select name="timeframe" class="form-select me-2">
+                                    <option value="daily" {% if timeframe == 'daily' %}selected{% endif %}>Today</option>
+                                    <option value="weekly" {% if timeframe == 'weekly' %}selected{% endif %}>This Week</option>
+                                    <option value="monthly" {% if timeframe == 'monthly' %}selected{% endif %}>This Month</option>
+                                    <option value="all" {% if timeframe == 'all' %}selected{% endif %}>All Time</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-2"></i>Apply
+                                </button>
+                            </form>
+                            
+                            <!-- Export Controls -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-download me-2"></i>Export
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="?report_type={{ report_type }}&timeframe={{ timeframe }}&download=true&format=csv">
+                                            <i class="fas fa-file-csv me-2"></i>CSV
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="?report_type={{ report_type }}&timeframe={{ timeframe }}&download=true&format=pdf">
+                                            <i class="fas fa-file-pdf me-2"></i>PDF
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Navigation Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <ul class="nav nav-pills nav-fill p-2">
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'overview' %}active{% endif %}" href="?report_type=overview&timeframe={{ timeframe }}">
+                                <i class="fas fa-chart-pie me-2"></i>Overview
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'sales' %}active{% endif %}" href="?report_type=sales&timeframe={{ timeframe }}">
+                                <i class="fas fa-shopping-cart me-2"></i>Sales
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'collections' %}active{% endif %}" href="?report_type=collections&timeframe={{ timeframe }}">
+                                <i class="fas fa-money-bill-wave me-2"></i>Collections
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'defaulters' %}active{% endif %}" href="?report_type=defaulters&timeframe={{ timeframe }}">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Defaulters
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'customers' %}active{% endif %}" href="?report_type=customers&timeframe={{ timeframe }}">
+                                <i class="fas fa-users me-2"></i>Customers
+                            </a>
+                        </li>
+                        {% if user.user_type == 'COMPANY_ADMIN' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if report_type == 'agents' %}active{% endif %}" href="?report_type=agents&timeframe={{ timeframe }}">
+                                <i class="fas fa-user-tie me-2"></i>Agents
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Title and Period -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    {% if report_type == 'overview' %}
+                        Overview Report
+                    {% elif report_type == 'sales' %}
+                        Sales Report
+                    {% elif report_type == 'collections' %}
+                        Collections Report
+                    {% elif report_type == 'defaulters' %}
+                        Defaulters Report
+                    {% elif report_type == 'customers' %}
+                        Customer Report
+                    {% elif report_type == 'agents' %}
+                        Agent Performance Report
+                    {% endif %}
+                </h5>
+                
+                {% if timeframe != 'all' %}
+                <span class="text-muted">
+                    Period: {{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}
+                </span>
+                {% else %}
+                <span class="text-muted">All time data</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Stats (Common for all reports) -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-primary-light text-primary rounded-circle p-3">
+                                <i class="fas fa-users fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-muted text-sm mb-1">Total Customers</p>
+                            <h3 class="mb-0">{{ total_customers }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-success-light text-success rounded-circle p-3">
+                                <i class="fas fa-shopping-cart fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-muted text-sm mb-1">Total Orders</p>
+                            <h3 class="mb-0">{{ total_orders }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-info-light text-info rounded-circle p-3">
+                                <i class="fas fa-money-bill-wave fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-muted text-sm mb-1">Total Collections</p>
+                            <h3 class="mb-0">₹{{ total_collected|floatformat:2 }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar bg-warning-light text-warning rounded-circle p-3">
+                                <i class="fas fa-clock fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="text-muted text-sm mb-1">Pending Collections</p>
+                            <h3 class="mb-0">₹{{ pending_collections|floatformat:2 }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report-Specific Content -->
+    {% if report_type == 'overview' %}
+        {% include "app/reports/overview_report.html" %}
+    {% elif report_type == 'sales' %}
+        {% include "app/reports/sales_report.html" %}
+    {% elif report_type == 'collections' %}
+        {% include "app/reports/collections_report.html" %}
+    {% elif report_type == 'defaulters' %}
+        {% include "app/reports/defaulters_report.html" %}
+    {% elif report_type == 'customers' %}
+        {% include "app/reports/customers_report.html" %}
+    {% elif report_type == 'agents' %}
+        {% include "app/reports/agents_report.html" %}
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize any charts when document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize charts if they exist
+        if (document.getElementById('salesChart')) {
+            initializeSalesChart();
+        }
+        
+        if (document.getElementById('collectionsChart')) {
+            initializeCollectionsChart();
+        }
+        
+        if (document.getElementById('defaultersChart')) {
+            initializeDefaultersChart();
+        }
+    });
+    
+    // Chart initialization functions will be defined in the individual report templates
+</script>
+{% endblock %} 

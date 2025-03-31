@@ -1,0 +1,272 @@
+{% load custom_filters %}
+
+<!-- Collections Report -->
+<div class="row">
+    <!-- Collection Summary -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Collection Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">Collection Efficiency</h5>
+                    {% with efficiency=total_collected|default:0|div:total_order_amount|default:1|mul:100 %}
+                    <div class="d-flex align-items-center mb-3">
+                        <h3 class="mb-0 me-2">{{ efficiency|floatformat:1 }}%</h3>
+                        <span class="badge {% if efficiency >= 80 %}bg-success{% elif efficiency >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {% if efficiency >= 80 %}Good{% elif efficiency >= 50 %}Average{% else %}Needs Attention{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="progress mb-3" style="height: 15px;">
+                        <div class="progress-bar {% if efficiency >= 80 %}bg-success{% elif efficiency >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ efficiency|floatformat:0 }}%;" 
+                             aria-valuenow="{{ efficiency|floatformat:0 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ efficiency|floatformat:0 }}%
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Total Collected</small>
+                        <small>₹{{ total_collected|floatformat:2 }}</small>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Total Due</small>
+                        <small>₹{{ total_order_amount|floatformat:2 }}</small>
+                    </div>
+                    {% endwith %}
+                </div>
+                
+                <div class="mb-3">
+                    <h5 class="text-muted mb-3">Average Collection Time</h5>
+                    <h3 class="mb-2">{{ avg_collection_days|floatformat:1 }} days</h3>
+                    <p class="text-muted small">Average time from order creation to payment collection</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bank-wise Collections -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Collections by Payment Method</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="bankCollectionsChart" height="250"></canvas>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Payment Method</th>
+                                <th class="text-center">Count</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bank in bank_collections %}
+                            <tr>
+                                <td>{{ bank.bank__name|default:"Unspecified" }}</td>
+                                <td class="text-center">{{ bank.count }}</td>
+                                <td class="text-end">₹{{ bank.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">No payment method data</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Collections Trend -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Monthly Collections Trend</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="collectionsChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Payments -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Recent Payments</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                                <th>Agent</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in recent_payments %}
+                            <tr>
+                                <td>{{ payment.payment_date }}</td>
+                                <td>
+                                    <a href="{% url 'app:customer-detail' payment.customer.id %}">
+                                        {{ payment.customer.name }}
+                                    </a>
+                                </td>
+                                <td>₹{{ payment.amount_received|floatformat:2 }}</td>
+                                <td>{{ payment.bank.name|default:"Unspecified" }}</td>
+                                <td>{{ payment.agent.username|default:"" }}</td>
+                                <td>
+                                    <a href="{% url 'app:payment-receipt' payment.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-receipt"></i> Receipt
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-money-bill-wave fa-2x mb-3"></i>
+                                        <p>No payment data available for the selected period</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializeCollectionsChart() {
+    // Monthly Collections Trend Chart
+    const collectionsCtx = document.getElementById('collectionsChart').getContext('2d');
+    const collectionsChart = new Chart(collectionsCtx, {
+        type: 'bar',
+        data: {
+            labels: [
+                {% for month, data in monthly_collections.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Collections',
+                data: [
+                    {% for month, data in monthly_collections.items %}
+                        {{ data.amount|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                borderColor: '#198754',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('en-IN', { 
+                                    style: 'currency', 
+                                    currency: 'INR',
+                                    maximumFractionDigits: 0
+                                }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Bank Collections Chart
+    const bankCtx = document.getElementById('bankCollectionsChart').getContext('2d');
+    const bankChart = new Chart(bankCtx, {
+        type: 'pie',
+        data: {
+            labels: [
+                {% for bank in bank_collections %}
+                    '{{ bank.bank__name|default:"Unspecified" }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for bank in bank_collections %}
+                        {{ bank.total }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#0d6efd',
+                    '#198754',
+                    '#6c757d',
+                    '#dc3545',
+                    '#fd7e14',
+                    '#ffc107',
+                    '#0dcaf0'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw;
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script> 

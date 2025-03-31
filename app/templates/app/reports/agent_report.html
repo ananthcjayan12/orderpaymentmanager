@@ -1,0 +1,338 @@
+{% load custom_filters %}
+
+<!-- Agent Performance Report -->
+<div class="row">
+    <!-- Agent Summary Stats -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Agent Performance Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">Total Sales</h5>
+                    <h3 class="mb-0">₹{{ total_agent_sales|floatformat:2 }}</h3>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div class="progress-bar bg-primary" style="width: 100%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-muted mt-3">
+                        <small>Total Orders</small>
+                        <small>{{ total_agent_orders }}</small>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Average Order Value</small>
+                        <small>₹{{ avg_agent_order_value|floatformat:2 }}</small>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">Total Collections</h5>
+                    <h3 class="mb-0">₹{{ total_agent_collections|floatformat:2 }}</h3>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-muted mt-3">
+                        <small>Collection Efficiency</small>
+                        <small>
+                            {% with efficiency=total_agent_collections|default:0|div:total_agent_sales|default:1|mul:100 %}
+                            {{ efficiency|floatformat:1 }}%
+                            {% endwith %}
+                        </small>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <small>Total Payments</small>
+                        <small>{{ total_agent_payments }}</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5 class="text-muted mb-3">Customer Acquisition</h5>
+                    <h3 class="mb-0">{{ total_agent_customers }} customers</h3>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div class="progress-bar bg-info" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agent Rankings -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Agent Rankings</h6>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="agentRankingTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-tab-pane" 
+                            type="button" role="tab" aria-controls="sales-tab-pane" aria-selected="true">Sales</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="collections-tab" data-bs-toggle="tab" data-bs-target="#collections-tab-pane" 
+                            type="button" role="tab" aria-controls="collections-tab-pane" aria-selected="false">Collections</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="customers-tab" data-bs-toggle="tab" data-bs-target="#customers-tab-pane" 
+                            type="button" role="tab" aria-controls="customers-tab-pane" aria-selected="false">Customers</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content pt-3" id="agentRankingTabContent">
+                    <!-- Sales Rankings -->
+                    <div class="tab-pane fade show active" id="sales-tab-pane" role="tabpanel" aria-labelledby="sales-tab" tabindex="0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Agent</th>
+                                        <th class="text-end">Orders</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agent in agent_sales_ranking %}
+                                    <tr {% if agent.username == request.user.username %}class="table-primary"{% endif %}>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ agent.username }}</td>
+                                        <td class="text-end">{{ agent.orders_count }}</td>
+                                        <td class="text-end">₹{{ agent.total_sales|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No sales data</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Collections Rankings -->
+                    <div class="tab-pane fade" id="collections-tab-pane" role="tabpanel" aria-labelledby="collections-tab" tabindex="0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Agent</th>
+                                        <th class="text-end">Payments</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agent in agent_collections_ranking %}
+                                    <tr {% if agent.username == request.user.username %}class="table-primary"{% endif %}>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ agent.username }}</td>
+                                        <td class="text-end">{{ agent.payments_count }}</td>
+                                        <td class="text-end">₹{{ agent.total_collections|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No collections data</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Acquisition Rankings -->
+                    <div class="tab-pane fade" id="customers-tab-pane" role="tabpanel" aria-labelledby="customers-tab" tabindex="0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Agent</th>
+                                        <th class="text-end">Customers</th>
+                                        <th class="text-end">Avg Orders</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agent in agent_customers_ranking %}
+                                    <tr {% if agent.username == request.user.username %}class="table-primary"{% endif %}>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ agent.username }}</td>
+                                        <td class="text-end">{{ agent.customers_count }}</td>
+                                        <td class="text-end">{{ agent.avg_orders_per_customer|floatformat:1 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No customer data</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Trends -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Performance Trends</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="agentPerformanceChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agent Performance Data -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Agent Performance Details</h6>
+                <a href="{% url 'app:download_report' %}?report_type=agent_performance&format=csv" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download"></i> Download CSV
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="agentPerformanceTable">
+                        <thead>
+                            <tr>
+                                <th>Agent</th>
+                                <th class="text-center">Orders</th>
+                                <th class="text-end">Sales</th>
+                                <th class="text-center">Payments</th>
+                                <th class="text-end">Collections</th>
+                                <th class="text-center">Customers</th>
+                                <th class="text-end">Collection %</th>
+                                <th class="text-end">Avg Order Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in agent_performance %}
+                            <tr {% if agent.username == request.user.username %}class="table-primary"{% endif %}>
+                                <td>{{ agent.username }}</td>
+                                <td class="text-center">{{ agent.orders_count }}</td>
+                                <td class="text-end">₹{{ agent.total_sales|floatformat:2 }}</td>
+                                <td class="text-center">{{ agent.payments_count }}</td>
+                                <td class="text-end">₹{{ agent.total_collections|floatformat:2 }}</td>
+                                <td class="text-center">{{ agent.customers_count }}</td>
+                                <td class="text-end">
+                                    {% with collection_percent=agent.total_collections|div:agent.total_sales|mul:100 %}
+                                    <span class="badge {% if collection_percent >= 80 %}bg-success{% elif collection_percent >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ collection_percent|floatformat:1 }}%
+                                    </span>
+                                    {% endwith %}
+                                </td>
+                                <td class="text-end">
+                                    {% with aov=agent.total_sales|div:agent.orders_count|default:0 %}
+                                    ₹{{ aov|floatformat:2 }}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-user-tie fa-2x mb-3"></i>
+                                        <p>No agent performance data available for the selected period</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializeAgentCharts() {
+    // Agent Performance Chart
+    const performanceCtx = document.getElementById('agentPerformanceChart').getContext('2d');
+    const performanceChart = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for month, data in monthly_agent_performance.items %}
+                    '{{ month }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Sales',
+                data: [
+                    {% for month, data in monthly_agent_performance.items %}
+                        {{ data.sales|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderColor: '#0d6efd',
+                borderWidth: 2,
+                tension: 0.4
+            }, {
+                label: 'Collections',
+                data: [
+                    {% for month, data in monthly_agent_performance.items %}
+                        {{ data.collections|default:0 }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                borderColor: '#198754',
+                borderWidth: 2,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('en-IN', { 
+                                    style: 'currency', 
+                                    currency: 'INR',
+                                    maximumFractionDigits: 0
+                                }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize DataTable for better sorting and filtering
+$(document).ready(function() {
+    if($.fn.DataTable) {
+        $('#agentPerformanceTable').DataTable({
+            order: [[2, 'desc']], // Sort by sales by default
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            responsive: true
+        });
+    }
+});
+</script> 

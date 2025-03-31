@@ -1,0 +1,169 @@
+{% load custom_filters %}
+
+<!-- Overview Report -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Business Overview</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Select a specific report from the tabs above to see detailed insights and analytics about your business performance.</p>
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-shopping-cart me-2"></i>Sales Report
+                                </h6>
+                                <p class="text-muted mb-3">Analyze your sales performance across different order types (B2C/B2B, EMI/Ready Cash). Track monthly trends and identify your top-selling products.</p>
+                                <a href="?report_type=sales&timeframe={{ timeframe }}" class="btn btn-sm btn-primary">View Sales Report</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-success mb-3">
+                                    <i class="fas fa-money-bill-wave me-2"></i>Collections Report
+                                </h6>
+                                <p class="text-muted mb-3">Monitor your cash flow with collection analytics. Track payment methods, collection efficiency, and identify trends in your cash inflow.</p>
+                                <a href="?report_type=collections&timeframe={{ timeframe }}" class="btn btn-sm btn-success">View Collections Report</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-danger mb-3">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Defaulters Report
+                                </h6>
+                                <p class="text-muted mb-3">Identify customers with overdue payments. Track defaulters by type (Ready Cash/EMI), and analyze aging of outstanding payments.</p>
+                                <a href="?report_type=defaulters&timeframe={{ timeframe }}" class="btn btn-sm btn-danger">View Defaulters Report</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-info mb-3">
+                                    <i class="fas fa-users me-2"></i>Customers Report
+                                </h6>
+                                <p class="text-muted mb-3">Understand your customer base better. See top customers by order value and frequency, and analyze customer distribution by location.</p>
+                                <a href="?report_type=customers&timeframe={{ timeframe }}" class="btn btn-sm btn-info">View Customers Report</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if user.user_type == 'COMPANY_ADMIN' %}
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-secondary mb-3">
+                                    <i class="fas fa-user-tie me-2"></i>Agent Performance
+                                </h6>
+                                <p class="text-muted mb-3">Review your sales team's performance. Compare agents by orders, collections, and collection efficiency.</p>
+                                <a href="?report_type=agents&timeframe={{ timeframe }}" class="btn btn-sm btn-secondary">View Agent Report</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0">Quick Stats</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">Collection Efficiency</h6>
+                    {% with efficiency=total_collected|default:0|div:total_order_amount|default:1|mul:100 %}
+                    <div class="progress mb-2" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ efficiency|floatformat:0 }}%;" aria-valuenow="{{ efficiency|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">Collected: ₹{{ total_collected|floatformat:2 }}</small>
+                        <small class="text-success">{{ efficiency|floatformat:1 }}%</small>
+                    </div>
+                    {% endwith %}
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">Order Type Distribution</h6>
+                    {% with b2c_ready=b2c_ready_cash_count|default:0 b2c_emi=b2c_emi_count|default:0 b2b_ready=b2b_ready_cash_count|default:0 b2b_emi=b2b_emi_count|default:0 %}
+                    {% with total=b2c_ready|add:b2c_emi|add:b2b_ready|add:b2b_emi|default:1 %}
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar bg-primary" role="progressbar" 
+                             style="width: {{ b2c_ready|div:total|mul:100 }}%;" 
+                             aria-valuenow="{{ b2c_ready }}" aria-valuemin="0" aria-valuemax="{{ total }}"
+                             title="B2C Ready Cash">
+                        </div>
+                        <div class="progress-bar bg-info" role="progressbar" 
+                             style="width: {{ b2c_emi|div:total|mul:100 }}%;" 
+                             aria-valuenow="{{ b2c_emi }}" aria-valuemin="0" aria-valuemax="{{ total }}"
+                             title="B2C EMI">
+                        </div>
+                        <div class="progress-bar bg-secondary" role="progressbar" 
+                             style="width: {{ b2b_ready|div:total|mul:100 }}%;" 
+                             aria-valuenow="{{ b2b_ready }}" aria-valuemin="0" aria-valuemax="{{ total }}"
+                             title="B2B Ready Cash">
+                        </div>
+                        <div class="progress-bar bg-dark" role="progressbar" 
+                             style="width: {{ b2b_emi|div:total|mul:100 }}%;" 
+                             aria-valuenow="{{ b2b_emi }}" aria-valuemin="0" aria-valuemax="{{ total }}"
+                             title="B2B EMI">
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-1">&nbsp;</span>
+                            <small>B2C Ready: {{ b2c_ready }}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-info me-1">&nbsp;</span>
+                            <small>B2C EMI: {{ b2c_emi }}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-1">&nbsp;</span>
+                            <small>B2B Ready: {{ b2b_ready }}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-dark me-1">&nbsp;</span>
+                            <small>B2B EMI: {{ b2b_emi }}</small>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endwith %}
+                </div>
+                
+                <div class="mb-2">
+                    <h6 class="text-muted mb-2">Defaulters Status</h6>
+                    {% with total_defaulters=total_defaulters|default:0 total_customers=total_customers|default:1 %}
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-grow-1">
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar bg-danger" role="progressbar" 
+                                     style="width: {{ total_defaulters|div:total_customers|mul:100 }}%;" 
+                                     aria-valuenow="{{ total_defaulters }}" aria-valuemin="0" aria-valuemax="{{ total_customers }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <span class="badge bg-danger">{{ total_defaulters }}</span>
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ total_defaulters }} out of {{ total_customers }} customers have overdue payments</small>
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
