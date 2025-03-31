@@ -137,17 +137,17 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span>
                                             <i class="fas fa-calendar-alt text-muted me-1"></i>
-                                            {% if group.orders.0.collection_frequency == 'WEEKLY' %}
+                                            {% if group.orders.0.order.collection_frequency == 'WEEKLY' %}
                                             Weekly on 
-                                            {% if group.orders.0.collection_day_of_week == 0 %}Monday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 1 %}Tuesday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 2 %}Wednesday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 3 %}Thursday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 4 %}Friday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 5 %}Saturday{% endif %}
-                                            {% if group.orders.0.collection_day_of_week == 6 %}Sunday{% endif %}
-                                            {% elif group.orders.0.collection_frequency == 'MONTHLY' %}
-                                            Monthly on day {{ group.orders.0.collection_day_of_month }}
+                                            {% if group.orders.0.order.collection_day_of_week == 0 %}Monday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 1 %}Tuesday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 2 %}Wednesday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 3 %}Thursday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 4 %}Friday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 5 %}Saturday{% endif %}
+                                            {% if group.orders.0.order.collection_day_of_week == 6 %}Sunday{% endif %}
+                                            {% elif group.orders.0.order.collection_frequency == 'MONTHLY' %}
+                                            Monthly on day {{ group.orders.0.order.collection_day_of_month }}
                                             {% else %}
                                             No regular collection
                                             {% endif %}

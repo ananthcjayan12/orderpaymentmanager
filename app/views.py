@@ -1177,14 +1177,14 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         if filter_by == 'overdue':
             # Show orders with overdue payments
             orders = orders.filter(
-                order_payments__payment__isnull=True,
+                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
                 order_payments__due_date__lt=today
             ).distinct()
         elif filter_by == 'this_week':
             # Show orders with payments due this week
             week_end = today + timezone.timedelta(days=7)
             orders = orders.filter(
-                order_payments__payment__isnull=True,
+                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
                 order_payments__due_date__gte=today,
                 order_payments__due_date__lte=week_end
             ).distinct()
@@ -1193,7 +1193,7 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
             week_start = today + timezone.timedelta(days=7)
             week_end = today + timezone.timedelta(days=14)
             orders = orders.filter(
-                order_payments__payment__isnull=True,
+                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
                 order_payments__due_date__gte=week_start,
                 order_payments__due_date__lte=week_end
             ).distinct()
@@ -1239,31 +1239,39 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
                     'installment': op.installment_number,
                     'due_date': op.due_date,
                     'amount': op.amount,
-                    'status': 'paid' if op.payment else 'pending',
-                    'payment_date': op.payment.payment_date if op.payment else None
+                    'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else 'pending',
+                    'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
                 }
                 payment_schedule.append(payment_status)
-                if op.payment:
+                if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE":
                     total_paid += op.amount
+            
+            # Calculate remaining amount
+            remaining_amount = order.total_amount - total_paid
             
             # Add order details
             order_info = {
                 'order': order,
                 'payment_schedule': payment_schedule,
                 'total_paid': total_paid,
-                'remaining_amount': order.total_amount - total_paid,
+                'remaining_amount': remaining_amount,
                 'next_payment_date': order.get_next_payment_date(),
                 'is_fully_paid': order.is_fully_paid
             }
             
             grouped_orders[customer_id]['orders'].append(order_info)
             
-            # Update counters
+            # Update counters and total_due
             if order.is_fully_paid:
                 total_paid_count += 1
             else:
                 total_unpaid_count += 1
-                grouped_orders[customer_id]['total_due'] += order_info['remaining_amount']
+                # For EMI orders, add the next installment amount
+                if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
+                    grouped_orders[customer_id]['total_due'] += order.emi_amount
+                else:
+                    # For non-EMI orders, add the full remaining amount
+                    grouped_orders[customer_id]['total_due'] += remaining_amount
         
         # Remove customers with no matching orders after filtering
         grouped_orders = {k: v for k, v in grouped_orders.items() if v['orders']}
@@ -1275,13 +1283,13 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         # Add statistics
         context['total_overdue'] = Order.objects.filter(
             company=self.request.user.company,
-            order_payments__payment__isnull=True,
+            order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
             order_payments__due_date__lt=today
         ).distinct().count()
         
         context['total_due_this_week'] = Order.objects.filter(
             company=self.request.user.company,
-            order_payments__payment__isnull=True,
+            order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
             order_payments__due_date__gte=today,
             order_payments__due_date__lte=today + timezone.timedelta(days=7)
         ).distinct().count()
