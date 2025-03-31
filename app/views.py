@@ -966,11 +966,12 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                     for i in range(1, installments + 1):
                         amount = min(emi_amount, remaining_amount)
                         
-                        # Create OrderPayment with the placeholder payment
+                        # Create the OrderPayment entry with the placeholder payment
                         OrderPayment.objects.create(
                             order=self.object,
                             payment=placeholder_payment,  # Use the placeholder
                             amount=amount,
+                            paid_amount=Decimal('0.00'),  # Initialize paid amount to zero
                             installment_number=i,
                             due_date=current_date
                         )
@@ -1239,12 +1240,13 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
                     'installment': op.installment_number,
                     'due_date': op.due_date,
                     'amount': op.amount,
-                    'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else 'pending',
+                    'paid_amount': op.paid_amount,
+                    'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" and op.paid_amount >= op.amount else 
+                             'partial' if op.paid_amount > 0 else 'pending',
                     'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
                 }
                 payment_schedule.append(payment_status)
-                if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE":
-                    total_paid += op.amount
+                total_paid += op.paid_amount
             
             # Calculate remaining amount
             remaining_amount = order.total_amount - total_paid
@@ -1368,14 +1370,34 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
                             break
                             
                         # Calculate amount to apply to this installment
-                        amount_to_apply = min(remaining_amount, installment.amount)
+                        installment_remaining = installment.amount - installment.paid_amount
+                        amount_to_apply = min(remaining_amount, installment_remaining)
                         
-                        # Add the placeholder payment to the list to delete later
-                        placeholders_to_delete.add(installment.payment.id)
-                        
-                        # Update the installment with the real payment
-                        installment.payment = payment
-                        installment.save()
+                        # If this payment fully covers the installment
+                        if amount_to_apply >= installment_remaining:
+                            # Add the placeholder payment to the list to delete later
+                            if installment.payment:
+                                placeholders_to_delete.add(installment.payment.id)
+                            
+                            # Update the installment with the real payment and mark as fully paid
+                            installment.payment = payment
+                            installment.paid_amount = installment.amount
+                            installment.save()
+                        else:
+                            # This is a partial payment
+                            # Create a copy of this installment to track the partial payment
+                            OrderPayment.objects.create(
+                                order=order,
+                                payment=payment,
+                                amount=amount_to_apply,
+                                paid_amount=amount_to_apply,
+                                installment_number=installment.installment_number,
+                                due_date=installment.due_date
+                            )
+                            
+                            # Update the original installment's paid amount
+                            installment.paid_amount += amount_to_apply
+                            installment.save()
                         
                         remaining_amount -= amount_to_apply
                 

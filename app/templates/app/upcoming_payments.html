@@ -108,7 +108,15 @@
                                                         <span class="badge bg-success">Paid</span>
                                                         <br><small class="text-muted">{{ order.payment_date }}</small>
                                                         {% else %}
-                                                        <span class="badge bg-danger">Unpaid</span>
+                                                            {% if order.order.order_payments.all.0.paid_amount > 0 %}
+                                                            <span class="badge bg-warning">Partially Paid</span>
+                                                            <small class="d-block">
+                                                                {{ order.order.order_payments.all.0.paid_amount|floatformat:2 }} / 
+                                                                {{ order.order.order_payments.all.0.amount|floatformat:2 }}
+                                                            </small>
+                                                            {% else %}
+                                                            <span class="badge bg-danger">Unpaid</span>
+                                                            {% endif %}
                                                         {% endif %}
                                                     </td>
                                                     <td>
