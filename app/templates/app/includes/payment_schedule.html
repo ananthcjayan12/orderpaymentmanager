@@ -1,0 +1,104 @@
+{% comment %}
+This template displays a payment schedule for orders with EMI.
+It can be included in various pages like upcoming payments and customer details.
+
+Parameters:
+- orders: A list of order_info objects containing order and payment schedule details
+- customer: The customer object (required for creating payment links)
+- today: Today's date for comparison (optional, defaults to now)
+{% endcomment %}
+
+{% if not today %}
+{% now "Y-m-d" as today %}
+{% endif %}
+
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Due Date</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr {% if order.is_fully_paid %}class="table-success"{% endif %}>
+                <td># {{ order.order.id }}</td>
+                <td>
+                    {% if order.order.customer %}
+                    <a href="{% url 'app:customer-detail' order.order.customer.id %}">
+                        {{ order.order.customer.name }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">Unknown</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not order.is_fully_paid and order.next_payment_date < today %}
+                    <span class="text-danger">{{ order.next_payment_date }}</span>
+                    {% else %}
+                    {{ order.next_payment_date }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if order.order.order_type in 'B2C_EMI,B2B_EMI' and order.order.emi_amount %}
+                    ₹{{ order.order.emi_amount|floatformat:2 }}
+                    {% else %}
+                    ₹{{ order.order.total_amount|floatformat:2 }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if order.order.order_type == 'B2C_READY_CASH' %}
+                    <span class="badge bg-primary">B2C Ready Cash</span>
+                    {% elif order.order.order_type == 'B2C_EMI' %}
+                    <span class="badge bg-info">B2C EMI</span>
+                    {% elif order.order.order_type == 'B2B_READY_CASH' %}
+                    <span class="badge bg-secondary">B2B Ready Cash</span>
+                    {% elif order.order.order_type == 'B2B_EMI' %}
+                    <span class="badge bg-dark">B2B EMI</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if order.is_fully_paid %}
+                    <span class="badge bg-success">Paid</span>
+                    <br><small class="text-muted">{{ order.payment_date }}</small>
+                    {% else %}
+                        {% if order.order.order_payments.all.0.paid_amount > 0 %}
+                        <span class="badge bg-warning">Partially Paid</span>
+                        <small class="d-block">
+                            {{ order.order.order_payments.all.0.paid_amount|floatformat:2 }} / 
+                            {{ order.order.order_payments.all.0.amount|floatformat:2 }}
+                        </small>
+                        {% else %}
+                        <span class="badge bg-danger">Unpaid</span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="btn-group">
+                        {% if not order.is_fully_paid %}
+                        <a href="{% url 'app:customer-payment-create' order.order.customer.id %}?order_id={{ order.order.id }}{% if order.order.order_payments.all.0.paid_amount > 0 %}&remaining={{ order.order.order_payments.all.0.remaining_amount|floatformat:2 }}{% endif %}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </a>
+                        {% endif %}
+                        {% if order.order.id %}
+                        <a href="{% url 'app:order-detail' order.order.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No payment schedule available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div> 

@@ -186,6 +186,76 @@ def home(request):
     # Identify orders due soon (within next 7 days)
     due_soon = [order for order in upcoming_orders if today_date <= order.get_next_payment_date() <= today_date + timezone.timedelta(days=7)]
     
+    # Format orders for use with the payment_schedule.html include template
+    overdue_orders_info = []
+    for order in overdue_orders[:5]:  # Limit to top 5
+        # Get payment schedule and status
+        payment_schedule = []
+        total_paid = 0
+        
+        for op in order.order_payments.all().order_by('due_date'):
+            payment_status = {
+                'installment': op.installment_number,
+                'due_date': op.due_date,
+                'amount': op.amount,
+                'paid_amount': op.paid_amount,
+                'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" and op.paid_amount >= op.amount else 
+                         'partial' if op.paid_amount > 0 else 'pending',
+                'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
+            }
+            payment_schedule.append(payment_status)
+            total_paid += op.paid_amount
+        
+        # Calculate remaining amount
+        remaining_amount = order.total_amount - total_paid
+        
+        # Add order details
+        order_info = {
+            'order': order,
+            'payment_schedule': payment_schedule,
+            'total_paid': total_paid,
+            'remaining_amount': remaining_amount,
+            'next_payment_date': order.get_next_payment_date(),
+            'is_fully_paid': order.is_fully_paid
+        }
+        
+        overdue_orders_info.append(order_info)
+    
+    # Same for due soon orders
+    due_soon_orders_info = []
+    for order in due_soon[:5]:  # Limit to top 5
+        # Get payment schedule and status
+        payment_schedule = []
+        total_paid = 0
+        
+        for op in order.order_payments.all().order_by('due_date'):
+            payment_status = {
+                'installment': op.installment_number,
+                'due_date': op.due_date,
+                'amount': op.amount,
+                'paid_amount': op.paid_amount,
+                'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" and op.paid_amount >= op.amount else 
+                         'partial' if op.paid_amount > 0 else 'pending',
+                'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
+            }
+            payment_schedule.append(payment_status)
+            total_paid += op.paid_amount
+        
+        # Calculate remaining amount
+        remaining_amount = order.total_amount - total_paid
+        
+        # Add order details
+        order_info = {
+            'order': order,
+            'payment_schedule': payment_schedule,
+            'total_paid': total_paid,
+            'remaining_amount': remaining_amount,
+            'next_payment_date': order.get_next_payment_date(),
+            'is_fully_paid': order.is_fully_paid
+        }
+        
+        due_soon_orders_info.append(order_info)
+    
     # Insert grouping logic for upcoming orders by customer
     grouped_orders = {}
     for order in upcoming_orders:
@@ -435,8 +505,8 @@ def home(request):
         'sort_by': sort_by,
         'agent_performance': agent_performance if user_type == 'COMPANY_ADMIN' else None,
         'defaulters': defaulters,
-        'overdue_orders': overdue_orders[:5],  # Limit to top 5
-        'due_soon_orders': due_soon[:5],  # Limit to top 5
+        'overdue_orders_info': overdue_orders_info,
+        'due_soon_orders_info': due_soon_orders_info,
         'total_overdue': len(overdue_orders),
         'total_due_this_week': len(due_soon),
     }
@@ -603,6 +673,48 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
         total_payments = calculate_total_payments(payments)
         balance = calculate_customer_balance(customer)
         
+        # Prepare upcoming payments data
+        today = timezone.localdate()
+        
+        # Find orders with payment schedules that are not fully paid
+        upcoming_orders = []
+        for order in orders:
+            if order.order_type in ['B2C_EMI', 'B2B_EMI'] and not order.is_fully_paid:
+                # Get payment schedule and status
+                payment_schedule = []
+                total_paid = 0
+                
+                for op in order.order_payments.all().order_by('due_date'):
+                    payment_status = {
+                        'installment': op.installment_number,
+                        'due_date': op.due_date,
+                        'amount': op.amount,
+                        'paid_amount': op.paid_amount,
+                        'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" and op.paid_amount >= op.amount else 
+                                'partial' if op.paid_amount > 0 else 'pending',
+                        'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
+                    }
+                    payment_schedule.append(payment_status)
+                    total_paid += op.paid_amount
+                
+                # Calculate remaining amount
+                remaining_amount = order.total_amount - total_paid
+                
+                # Add order details
+                order_info = {
+                    'order': order,
+                    'payment_schedule': payment_schedule,
+                    'total_paid': total_paid,
+                    'remaining_amount': remaining_amount,
+                    'next_payment_date': order.get_next_payment_date(),
+                    'is_fully_paid': order.is_fully_paid
+                }
+                
+                upcoming_orders.append(order_info)
+        
+        # Sort by next payment date
+        upcoming_orders.sort(key=lambda order: order['next_payment_date'] if order['next_payment_date'] else today + timezone.timedelta(days=365))
+        
         # Update context with new values.
         context.update({
             'orders': orders,
@@ -610,6 +722,8 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             'total_amount': total_amount,
             'total_payments': total_payments,
             'balance': balance,
+            'upcoming_order_payments': upcoming_orders,
+            'today': today,
         })
         return context
 

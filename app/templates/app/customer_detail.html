@@ -130,7 +130,7 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Recent Payments</h5>
                 </div>
@@ -173,6 +173,26 @@
             </div>
         </div>
     </div>
+
+    {% if upcoming_order_payments %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Upcoming Payments</h5>
+                        <a href="{% url 'app:customer-payment-create' customer.id %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-money-bill-wave me-1"></i> Record Payment
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% include "app/includes/payment_schedule.html" with orders=upcoming_order_payments %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Delete Customer Modal -->
