@@ -14,11 +14,13 @@ import json
 import csv
 import io
 import pandas as pd
+import datetime
 from decimal import Decimal, InvalidOperation
+from math import ceil
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from accounts.models import Company, Agent
-from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Bank, CustomerItemPrice
+from .models import Customer, Order, OrderItem, Payment, Item, OrderTemplate, OrderTemplateItem, Bank, CustomerItemPrice, OrderPayment
 from .forms import (
     OrderForm, OrderItemFormSet, PaymentForm, BulkOrderForm, 
     OrderTemplateForm, OrderTemplateItemFormSet, CustomerForm, CustomerCSVUploadForm, BankForm
@@ -173,20 +175,26 @@ def home(request):
     defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
     defaulters = defaulters[:5]  # Only show top 5 defaulters
     
-    # Get upcoming payments information
-    upcoming_orders = Order.objects.filter(
-        company=company,
-        next_payment_date__isnull=False
-    ).order_by('next_payment_date')
+    # Get upcoming payments information using computed next payment date
+    all_orders = Order.objects.filter(company=company)
+    upcoming_orders = [order for order in all_orders if order.get_next_payment_date()]
+    upcoming_orders.sort(key=lambda order: order.get_next_payment_date())
+
+    # Identify overdue orders (next payment date has passed)
+    overdue_orders = [order for order in upcoming_orders if order.get_next_payment_date() < today_date]
+
+    # Identify orders due soon (within next 7 days)
+    due_soon = [order for order in upcoming_orders if today_date <= order.get_next_payment_date() <= today_date + timezone.timedelta(days=7)]
     
-    # Add those that are overdue (payment date has passed)
-    overdue_orders = upcoming_orders.filter(next_payment_date__lt=today_date)
-    
-    # Add those that are due soon (within the next 7 days)
-    due_soon = upcoming_orders.filter(
-        next_payment_date__gte=today_date,
-        next_payment_date__lte=today_date + timezone.timedelta(days=7)
-    )
+    # Insert grouping logic for upcoming orders by customer
+    grouped_orders = {}
+    for order in upcoming_orders:
+        if order.customer:
+            cust_id = order.customer.id
+            if cust_id not in grouped_orders:
+                grouped_orders[cust_id] = { 'customer': order.customer, 'orders': [] }
+            grouped_orders[cust_id]['orders'].append(order)
+    grouped_orders = list(grouped_orders.values())
     
     # Get paginated recent customers with their details
     page = request.GET.get('page', 1)
@@ -429,8 +437,8 @@ def home(request):
         'defaulters': defaulters,
         'overdue_orders': overdue_orders[:5],  # Limit to top 5
         'due_soon_orders': due_soon[:5],  # Limit to top 5
-        'total_overdue': overdue_orders.count(),
-        'total_due_soon': due_soon.count(),
+        'total_overdue': len(overdue_orders),
+        'total_due_this_week': len(due_soon),
     }
     
     return render(request, 'app/home.html', context)
@@ -917,23 +925,85 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
         """Set the company and agent before saving."""
         context = self.get_context_data()
         formset = context['items']
-        
+
         form.instance.company = self.request.user.company
         form.instance.agent = self.request.user
-        
+
         try:
             with transaction.atomic():
                 self.object = form.save()
-                
+
                 if formset.is_valid():
                     formset.instance = self.object
                     formset.save()
                 else:
                     raise ValueError("Formset validation failed")
+                
+                # Create payment schedule for EMI orders
+                if self.object.order_type in ['B2C_EMI', 'B2B_EMI'] and self.object.emi_amount:
+                    # Calculate the total number of installments using Decimal types
+                    total_amount = self.object.total_amount
+                    emi_amount = self.object.emi_amount
                     
+                    # Create a placeholder Payment for the EMI schedule
+                    # This will be a temporary record that marks installments as unpaid
+                    # When real payments are made, this will be replaced with actual payment records
+                    placeholder_payment = Payment.objects.create(
+                        company=self.request.user.company,
+                        customer=self.object.customer,
+                        amount_received=Decimal('0.00'),  # Zero amount
+                        payment_date=timezone.now().date(),
+                        notes="Placeholder for EMI schedule - DO NOT USE"
+                    )
+                    
+                    # Use ceiling division to ensure all amount is covered
+                    installments = ceil(total_amount / emi_amount)
+                    
+                    # Create OrderPayment entries for each installment
+                    current_date = self.object.order_date
+                    remaining_amount = Decimal(str(total_amount))
+                    
+                    for i in range(1, installments + 1):
+                        amount = min(emi_amount, remaining_amount)
+                        
+                        # Create OrderPayment with the placeholder payment
+                        OrderPayment.objects.create(
+                            order=self.object,
+                            payment=placeholder_payment,  # Use the placeholder
+                            amount=amount,
+                            installment_number=i,
+                            due_date=current_date
+                        )
+                        
+                        # Update for next iteration
+                        remaining_amount -= amount
+                        
+                        # Calculate next date based on collection frequency
+                        if self.object.collection_frequency == 'WEEKLY':
+                            current_date += timezone.timedelta(days=7)
+                        elif self.object.collection_frequency == 'MONTHLY':
+                            # Move to next month, preserving the day if possible
+                            day = min(current_date.day, 28)  # Ensure valid day for all months
+                            if current_date.month == 12:
+                                current_date = datetime.date(
+                                    year=current_date.year + 1,
+                                    month=1,
+                                    day=day
+                                )
+                            else:
+                                current_date = datetime.date(
+                                    year=current_date.year,
+                                    month=current_date.month + 1,
+                                    day=day
+                                )
+                    
+                    # Update the next_payment_date field
+                    self.object.next_payment_date = self.object.get_next_payment_date()
+                    self.object.save(update_fields=['next_payment_date'])
+
                 messages.success(self.request, 'Order created successfully.')
                 return super().form_valid(form)
-            
+
         except Exception as e:
             messages.error(self.request, f'Error creating order: {str(e)}')
             return self.form_invalid(form)
@@ -1094,14 +1164,47 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
     context_object_name = 'upcoming_orders'
     
     def get_queryset(self):
-        """Get orders with upcoming payment dates."""
+        """Get orders with upcoming payments."""
         company = self.request.user.company
+        today = timezone.localdate()
         
-        # Get orders with next payment dates
-        return Order.objects.filter(
-            company=company,
-            next_payment_date__isnull=False
-        ).order_by('next_payment_date')
+        # Get all orders for the company
+        orders = Order.objects.filter(company=company)
+        
+        # Filter based on user selection
+        filter_by = self.request.GET.get('filter', 'all')
+        
+        if filter_by == 'overdue':
+            # Show orders with overdue payments
+            orders = orders.filter(
+                order_payments__payment__isnull=True,
+                order_payments__due_date__lt=today
+            ).distinct()
+        elif filter_by == 'this_week':
+            # Show orders with payments due this week
+            week_end = today + timezone.timedelta(days=7)
+            orders = orders.filter(
+                order_payments__payment__isnull=True,
+                order_payments__due_date__gte=today,
+                order_payments__due_date__lte=week_end
+            ).distinct()
+        elif filter_by == 'next_week':
+            # Show orders with payments due next week
+            week_start = today + timezone.timedelta(days=7)
+            week_end = today + timezone.timedelta(days=14)
+            orders = orders.filter(
+                order_payments__payment__isnull=True,
+                order_payments__due_date__gte=week_start,
+                order_payments__due_date__lte=week_end
+            ).distinct()
+        elif filter_by == 'paid':
+            # Show orders that have all payments completed
+            orders = [order for order in orders if order.is_fully_paid]
+        elif filter_by == 'unpaid':
+            # Show orders that have pending payments
+            orders = [order for order in orders if not order.is_fully_paid]
+        
+        return orders
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1109,49 +1212,14 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         
         # Add today's date for template comparisons
         context['today'] = today
+        context['filter'] = self.request.GET.get('filter', 'all')
         
-        # Add filter options
-        filter_by = self.request.GET.get('filter', 'all')
-        queryset = self.get_queryset()
-        
-        if filter_by == 'overdue':
-            # Show only overdue
-            queryset = queryset.filter(next_payment_date__lt=today)
-            context['filter'] = 'overdue'
-        elif filter_by == 'this_week':
-            # Show only this week
-            week_end = today + timezone.timedelta(days=7)
-            queryset = queryset.filter(
-                next_payment_date__gte=today,
-                next_payment_date__lte=week_end
-            )
-            context['filter'] = 'this_week'
-        elif filter_by == 'next_week':
-            # Show only next week
-            week_start = today + timezone.timedelta(days=7)
-            week_end = today + timezone.timedelta(days=14)
-            queryset = queryset.filter(
-                next_payment_date__gte=week_start,
-                next_payment_date__lte=week_end
-            )
-            context['filter'] = 'next_week'
-        elif filter_by == 'paid':
-            # Show orders that have been paid
-            context['filter'] = 'paid'
-            # This will be handled below when we determine payment status
-        elif filter_by == 'unpaid':
-            # Show orders that have not been paid
-            context['filter'] = 'unpaid'
-            # This will be handled below when we determine payment status
-        else:
-            context['filter'] = 'all'
-        
-        # Group by customer
+        # Group orders by customer
         grouped_orders = {}
         total_paid_count = 0
         total_unpaid_count = 0
         
-        for order in queryset:
+        for order in self.get_queryset():
             customer_id = order.customer.id
             
             # Initialize customer group if not exists
@@ -1162,57 +1230,40 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
                     'total_due': 0
                 }
             
-            # Get all payments for this customer after order creation
-            payments_after_order = Payment.objects.filter(
-                customer=order.customer,
-                company=order.company,
-                created_at__gte=order.created_at
-            ).order_by('created_at')
+            # Get payment schedule and status
+            payment_schedule = []
+            total_paid = 0
             
-            # Determine if this order has been paid
-            # For EMI orders, check if any payment matches the EMI amount
-            # For other orders, check if total payments cover the order amount
-            is_paid = False
-            payment_date = None
+            for op in order.order_payments.all().order_by('due_date'):
+                payment_status = {
+                    'installment': op.installment_number,
+                    'due_date': op.due_date,
+                    'amount': op.amount,
+                    'status': 'paid' if op.payment else 'pending',
+                    'payment_date': op.payment.payment_date if op.payment else None
+                }
+                payment_schedule.append(payment_status)
+                if op.payment:
+                    total_paid += op.amount
             
-            if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
-                # For EMI orders, we look for payments that match the EMI amount
-                # Check for a payment with approximately the same amount as EMI
-                for payment in payments_after_order:
-                    if abs(payment.amount_received - order.emi_amount) < 1:  # Allow small difference
-                        is_paid = True
-                        payment_date = payment.payment_date
-                        break
-            else:
-                # For non-EMI orders, check if total payments cover the order total
-                total_paid = payments_after_order.aggregate(
-                    total=Sum('amount_received')
-                )['total'] or 0
-                
-                if total_paid >= order.total_amount:
-                    is_paid = True
-                    if payments_after_order.exists():
-                        payment_date = payments_after_order.latest('payment_date').payment_date
+            # Add order details
+            order_info = {
+                'order': order,
+                'payment_schedule': payment_schedule,
+                'total_paid': total_paid,
+                'remaining_amount': order.total_amount - total_paid,
+                'next_payment_date': order.get_next_payment_date(),
+                'is_fully_paid': order.is_fully_paid
+            }
             
-            # Add payment information to the order object
-            order.is_paid = is_paid
-            order.payment_date = payment_date
+            grouped_orders[customer_id]['orders'].append(order_info)
             
-            # Count paid vs unpaid orders
-            if is_paid:
+            # Update counters
+            if order.is_fully_paid:
                 total_paid_count += 1
             else:
                 total_unpaid_count += 1
-            
-            # Apply paid/unpaid filter if specified
-            if (filter_by == 'paid' and not is_paid) or (filter_by == 'unpaid' and is_paid):
-                continue
-            
-            # Add order to the group
-            grouped_orders[customer_id]['orders'].append(order)
-            # Only count unpaid orders towards total due
-            if not is_paid:
-                grouped_orders[customer_id]['total_due'] += order.total_amount
+                grouped_orders[customer_id]['total_due'] += order_info['remaining_amount']
         
         # Remove customers with no matching orders after filtering
         grouped_orders = {k: v for k, v in grouped_orders.items() if v['orders']}
@@ -1222,11 +1273,18 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         context['total_unpaid'] = total_unpaid_count
         
         # Add statistics
-        context['total_overdue'] = queryset.filter(next_payment_date__lt=today).count()
-        context['total_due_this_week'] = queryset.filter(
-            next_payment_date__gte=today,
-            next_payment_date__lte=today + timezone.timedelta(days=7)
-        ).count()
+        context['total_overdue'] = Order.objects.filter(
+            company=self.request.user.company,
+            order_payments__payment__isnull=True,
+            order_payments__due_date__lt=today
+        ).distinct().count()
+        
+        context['total_due_this_week'] = Order.objects.filter(
+            company=self.request.user.company,
+            order_payments__payment__isnull=True,
+            order_payments__due_date__gte=today,
+            order_payments__due_date__lte=today + timezone.timedelta(days=7)
+        ).distinct().count()
         
         return context
 
@@ -1247,19 +1305,19 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
         customer_id = self.kwargs.get('customer_id')
         if customer_id:
             initial['customer'] = customer_id
-            # Check if customer has EMI orders with pending payments
+            # Get customer's unpaid orders
             customer = Customer.objects.get(pk=customer_id)
-            emi_orders = Order.objects.filter(
-                customer=customer, 
-                emi_amount__isnull=False
-            ).filter(
-                Q(order_type='B2C_EMI') | Q(order_type='B2B_EMI')
-            ).order_by('-created_at')
+            unpaid_orders = Order.objects.filter(
+                customer=customer,
+                order_type__in=['B2C_EMI', 'B2B_EMI'],
+                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE"
+            ).distinct()
             
-            # If customer has EMI orders, pre-fill with the EMI amount of the most recent one
-            if emi_orders.exists():
-                recent_emi_order = emi_orders.first()
-                initial['amount_received'] = recent_emi_order.emi_amount
+            # If there's only one unpaid order with EMI, pre-fill the amount
+            if unpaid_orders.count() == 1:
+                order = unpaid_orders.first()
+                if order.order_type in ['B2C_EMI', 'B2B_EMI'] and order.emi_amount:
+                    initial['amount_received'] = order.emi_amount
         return initial
 
     def get_success_url(self):
@@ -1269,11 +1327,62 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         """Set the company and agent before saving."""
-        form.instance.company = self.request.user.company
-        form.instance.agent = self.request.user
-        response = super().form_valid(form)
-        messages.success(self.request, 'Payment recorded successfully')
-        return response
+        try:
+            with transaction.atomic():
+                # Set company and agent
+                form.instance.company = self.request.user.company
+                form.instance.agent = self.request.user
+                
+                # Save the payment
+                payment = form.save()
+                
+                # Get the customer's orders with placeholder payments
+                orders_with_placeholders = Order.objects.filter(
+                    customer=payment.customer,
+                    order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                ).distinct().order_by('order_date')
+                
+                remaining_amount = payment.amount_received
+                placeholders_to_delete = set()  # Track placeholders to delete
+                
+                # Distribute payment amount across unpaid orders
+                for order in orders_with_placeholders:
+                    if remaining_amount <= 0:
+                        break
+                    
+                    # Get installments with placeholder payments
+                    placeholder_installments = order.order_payments.filter(
+                        payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                    ).order_by('due_date')
+                    
+                    for installment in placeholder_installments:
+                        if remaining_amount <= 0:
+                            break
+                            
+                        # Calculate amount to apply to this installment
+                        amount_to_apply = min(remaining_amount, installment.amount)
+                        
+                        # Add the placeholder payment to the list to delete later
+                        placeholders_to_delete.add(installment.payment.id)
+                        
+                        # Update the installment with the real payment
+                        installment.payment = payment
+                        installment.save()
+                        
+                        remaining_amount -= amount_to_apply
+                
+                # Delete placeholder payments that are no longer needed (that have no remaining references)
+                for placeholder_id in placeholders_to_delete:
+                    # Only delete if no OrderPayment is still using it
+                    if not OrderPayment.objects.filter(payment_id=placeholder_id).exists():
+                        Payment.objects.filter(id=placeholder_id).delete()
+                
+                messages.success(self.request, 'Payment recorded successfully')
+                return super().form_valid(form)
+                
+        except Exception as e:
+            messages.error(self.request, f'Error recording payment: {str(e)}')
+            return self.form_invalid(form)
 
 # Add a new view for receipts
 class PaymentReceiptView(LoginRequiredMixin, DetailView):

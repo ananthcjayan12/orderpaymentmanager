@@ -147,40 +147,107 @@ class Order(models.Model):
             total=Sum(F('quantity') * F('price'))
         )['total'] or 0
         
-    def save(self, *args, **kwargs):
-        """Override save method to calculate next payment date."""
-        # Calculate next payment date based on collection frequency
-        if self.collection_frequency == 'WEEKLY' and self.collection_day_of_week is not None:
-            # Get the next occurrence of the specified day of the week
-            today = timezone.localdate()
-            days_ahead = self.collection_day_of_week - today.weekday()
-            if days_ahead <= 0:  # Target day already happened this week
-                days_ahead += 7
-            self.next_payment_date = today + timezone.timedelta(days=days_ahead)
-        elif self.collection_frequency == 'MONTHLY' and self.collection_day_of_month is not None:
-            # Get the next occurrence of the specified day of the month
-            today = timezone.localdate()
-            # If today is after the collection day in the current month, move to next month
-            if today.day > self.collection_day_of_month:
-                if today.month == 12:
-                    next_month = 1
-                    next_year = today.year + 1
-                else:
-                    next_month = today.month + 1
-                    next_year = today.year
-                # Handle case where day might be invalid for the next month (e.g., 31 in a 30-day month)
-                import calendar
-                last_day = calendar.monthrange(next_year, next_month)[1]
-                day = min(self.collection_day_of_month, last_day)
-                self.next_payment_date = timezone.datetime(next_year, next_month, day).date()
-            else:
-                # Set to the collection day in the current month
-                self.next_payment_date = timezone.datetime(today.year, today.month, self.collection_day_of_month).date()
-        else:
-            # No regular collection
-            self.next_payment_date = None
+    @property
+    def total_installments(self):
+        """Calculate total number of installments for EMI orders."""
+        if self.order_type in ['B2C_EMI', 'B2B_EMI'] and self.emi_amount:
+            return max(1, int(self.total_amount / self.emi_amount))
+        return 1
+
+    @property
+    def paid_installments(self):
+        """Get number of paid installments."""
+        return self.order_payments.count()
+
+    @property
+    def remaining_installments(self):
+        """Get number of remaining installments."""
+        return max(0, self.total_installments - self.paid_installments)
+
+    @property
+    def next_installment_number(self):
+        """Get the next installment number."""
+        return self.paid_installments + 1
+
+    @property
+    def is_fully_paid(self):
+        """Check if order is fully paid by summing only paid installments."""
+        # Check if there are any installments with placeholder payments
+        has_placeholders = self.order_payments.filter(
+            payment__notes="Placeholder for EMI schedule - DO NOT USE"
+        ).exists()
         
+        if has_placeholders:
+            return False
+            
+        # If no placeholders, check the regular way
+        total_paid = sum(op.amount for op in self.order_payments.exclude(
+            payment__notes="Placeholder for EMI schedule - DO NOT USE"
+        ))
+        return total_paid >= self.total_amount
+
+    def get_next_payment_date(self):
+        """Return the due date of the earliest unpaid installment."""
+        if self.is_fully_paid:
+            return None
+        # Find installments with placeholder payments (which represent unpaid installments)
+        unpaid = self.order_payments.filter(
+            payment__notes="Placeholder for EMI schedule - DO NOT USE"
+        ).order_by('due_date').first()
+        if unpaid:
+            return unpaid.due_date
+        return None
+
+    def get_payment_schedule(self):
+        """Generate the complete payment schedule for the order."""
+        if not self.emi_amount or self.order_type not in ['B2C_EMI', 'B2B_EMI']:
+            return []
+
+        schedule = []
+        current_date = self.order_date
+        remaining_amount = self.total_amount
+        installment = 1
+
+        while remaining_amount > 0:
+            amount = min(self.emi_amount, remaining_amount)
+            schedule.append({
+                'installment': installment,
+                'due_date': current_date,
+                'amount': amount,
+                'status': 'pending'
+            })
+            
+            # Update for next iteration
+            remaining_amount -= amount
+            installment += 1
+            
+            # Calculate next date based on collection frequency
+            if self.collection_frequency == 'WEEKLY':
+                current_date += timezone.timedelta(days=7)
+            elif self.collection_frequency == 'MONTHLY':
+                # Move to next month
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
+
+        return schedule
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        
+        # For new EMI orders, generate the payment schedule if not already created
+        if is_new and self.order_type in ['B2C_EMI', 'B2B_EMI'] and self.emi_amount:
+            if not self.order_payments.exists():
+                schedule = self.get_payment_schedule()
+                for payment in schedule:
+                    payment.order = self
+                    payment.save()
+
+        # Optionally, update a static next_payment_date field if used elsewhere (now computed method is preferred)
+        # self.next_payment_date = self.get_next_payment_date()
+        # super().save(update_fields=['next_payment_date'])
 
 class OrderItem(models.Model):
     """Model for order items."""
@@ -264,6 +331,21 @@ class Bank(models.Model):
             self.is_default = True
         super().save(*args, **kwargs)
 
+class OrderPayment(models.Model):
+    """Model to track payments for each order."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_payments')
+    payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='order_payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    installment_number = models.PositiveIntegerField(null=True, blank=True)
+    due_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['due_date']
+
+    def __str__(self):
+        return f"Payment #{self.payment.id} for Order #{self.order.id}"
+
 class Payment(models.Model):
     """Model for payments."""
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payments')
@@ -276,6 +358,7 @@ class Payment(models.Model):
     )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='payments')
     bank = models.ForeignKey(Bank, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
+    orders = models.ManyToManyField(Order, through=OrderPayment, related_name='payments')
     amount_received = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField(default=timezone.now)
     notes = models.TextField(blank=True, null=True)

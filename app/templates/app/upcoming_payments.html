@@ -76,35 +76,35 @@
                                             </thead>
                                             <tbody>
                                                 {% for order in group.orders %}
-                                                <tr {% if order.is_paid %}class="table-success"{% endif %}>
-                                                    <td># {{ order.id }}</td>
+                                                <tr {% if order.is_fully_paid %}class="table-success"{% endif %}>
+                                                    <td># {{ order.order.id }}</td>
                                                     <td>
-                                                        {% if not order.is_paid and order.next_payment_date < today %}
+                                                        {% if not order.is_fully_paid and order.next_payment_date < today %}
                                                         <span class="text-danger">{{ order.next_payment_date }}</span>
                                                         {% else %}
                                                         {{ order.next_payment_date }}
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        {% if order.order_type in 'B2C_EMI,B2B_EMI' and order.emi_amount %}
-                                                        ₹{{ order.emi_amount|floatformat:2 }}
+                                                        {% if order.order.order_type in 'B2C_EMI,B2B_EMI' and order.order.emi_amount %}
+                                                        ₹{{ order.order.emi_amount|floatformat:2 }}
                                                         {% else %}
-                                                        ₹{{ order.total_amount|floatformat:2 }}
+                                                        ₹{{ order.order.total_amount|floatformat:2 }}
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        {% if order.order_type == 'B2C_READY_CASH' %}
+                                                        {% if order.order.order_type == 'B2C_READY_CASH' %}
                                                         <span class="badge bg-primary">B2C Ready Cash</span>
-                                                        {% elif order.order_type == 'B2C_EMI' %}
+                                                        {% elif order.order.order_type == 'B2C_EMI' %}
                                                         <span class="badge bg-info">B2C EMI</span>
-                                                        {% elif order.order_type == 'B2B_READY_CASH' %}
+                                                        {% elif order.order.order_type == 'B2B_READY_CASH' %}
                                                         <span class="badge bg-secondary">B2B Ready Cash</span>
-                                                        {% elif order.order_type == 'B2B_EMI' %}
+                                                        {% elif order.order.order_type == 'B2B_EMI' %}
                                                         <span class="badge bg-dark">B2B EMI</span>
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        {% if order.is_paid %}
+                                                        {% if order.is_fully_paid %}
                                                         <span class="badge bg-success">Paid</span>
                                                         <br><small class="text-muted">{{ order.payment_date }}</small>
                                                         {% else %}
@@ -113,14 +113,18 @@
                                                     </td>
                                                     <td>
                                                         <div class="btn-group">
-                                                            {% if not order.is_paid %}
-                                                            <a href="{% url 'app:customer-payment-create' order.customer.id %}" class="btn btn-sm btn-outline-success">
+                                                            {% if not order.is_fully_paid %}
+                                                            <a href="{% url 'app:customer-payment-create' group.customer.id %}" class="btn btn-sm btn-outline-success">
                                                                 <i class="fas fa-money-bill-wave"></i>
                                                             </a>
                                                             {% endif %}
-                                                            <a href="{% url 'app:order-detail' order.id %}" class="btn btn-sm btn-outline-primary">
+                                                            {% if order.order.id %}
+                                                            <a href="{% url 'app:order-detail' order.order.id %}" class="btn btn-sm btn-outline-primary">
                                                                 <i class="fas fa-eye"></i>
                                                             </a>
+                                                            {% else %}
+                                                            <span class="text-muted">No Order ID</span>
+                                                            {% endif %}
                                                         </div>
                                                     </td>
                                                 </tr>
