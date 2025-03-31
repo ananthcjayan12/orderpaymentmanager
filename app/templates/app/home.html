@@ -153,8 +153,8 @@
                             <thead>
                                 <tr>
                                     <th>Customer</th>
-                                    <th>Contact</th>
-                                    <th>Balance</th>
+                                    <th>Amount</th>
+                                    <th>Default Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -170,13 +170,28 @@
                                             </div>
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-0">{{ customer.name }}</h6>
-                                                <small class="text-muted">{{ customer.location }}</small>
+                                                <small class="text-muted">{{ customer.mobile1 }}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{{ customer.mobile1 }}</td>
                                     <td>
                                         <span class="badge bg-danger">₹{{ customer.calculated_balance|floatformat:2 }}</span>
+                                    </td>
+                                    <td>
+                                        {% if customer.default_info %}
+                                            {% if 'ready_cash' in customer.default_info.types %}
+                                                <span class="badge bg-primary">Ready Cash</span>
+                                            {% endif %}
+                                            
+                                            {% if 'emi' in customer.default_info.types %}
+                                                <span class="badge bg-warning">EMI</span>
+                                                {% if customer.default_info.max_days_overdue > 0 %}
+                                                <small class="d-block text-danger">
+                                                    {{ customer.default_info.max_days_overdue }} days
+                                                </small>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <div class="btn-group">
@@ -405,14 +420,14 @@
                         {% for activity in recent_activities %}
                         <div class="list-group-item border-0 py-3">
                             <div class="d-flex align-items-center">
-                                <div class="avatar-sm bg-{{ activity.type }}-light text-{{ activity.type }} rounded-circle me-3">
+                                <div class="avatar-sm {% if activity.type == 'order' %}bg-primary-light text-primary{% else %}bg-success-light text-success{% endif %} rounded-circle me-3">
                                     <i class="fas fa-{% if activity.type == 'order' %}shopping-cart{% else %}money-bill-wave{% endif %}"></i>
                                 </div>
                                 <div class="flex-grow-1">
                                     <p class="mb-1">{{ activity.message }}</p>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
-                                        <a href="{{ activity.url }}" class="btn btn-sm btn-link text-{{ activity.type }} p-0">
+                                        <a href="{{ activity.url }}" class="btn btn-sm btn-link {% if activity.type == 'order' %}text-primary{% else %}text-success{% endif %} p-0">
                                             View Details
                                             <i class="fas fa-arrow-right ms-1"></i>
                                         </a>
@@ -436,7 +451,7 @@
                         <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if recent_activities.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?activities_page=1">
+                                <a class="page-link" href="?{% if request.GET.timeframe %}timeframe={{ request.GET.timeframe }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}activities_page=1">
                                     <i class="fas fa-angle-double-left"></i>
                                 </a>
                             </li>
@@ -450,7 +465,7 @@
                             
                             {% if recent_activities.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?activities_page={{ recent_activities.paginator.num_pages }}">
+                                <a class="page-link" href="?{% if request.GET.timeframe %}timeframe={{ request.GET.timeframe }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}activities_page={{ recent_activities.paginator.num_pages }}">
                                     <i class="fas fa-angle-double-right"></i>
                                 </a>
                             </li>

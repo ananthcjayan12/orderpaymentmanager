@@ -24,7 +24,8 @@
                                 <tr>
                                     <th>Customer</th>
                                     <th>Contact</th>
-                                    <th>Outstanding Balance</th>
+                                    <th>Overdue Amount</th>
+                                    <th>Default Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -54,6 +55,22 @@
                                         <span class="badge bg-danger fs-6">₹{{ customer.calculated_balance|floatformat:2 }}</span>
                                     </td>
                                     <td>
+                                        {% if customer.default_info %}
+                                            {% if 'ready_cash' in customer.default_info.types %}
+                                                <span class="badge bg-primary">Ready Cash Unpaid</span><br>
+                                            {% endif %}
+                                            
+                                            {% if 'emi' in customer.default_info.types %}
+                                                <span class="badge bg-warning">EMI Overdue</span>
+                                                <small class="d-block text-danger mt-1">
+                                                    {{ customer.default_info.max_days_overdue }} days overdue
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">Payment Required</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         <div class="btn-group">
                                             <a href="{% url 'app:customer-detail' customer.id %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i> View
@@ -66,7 +83,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fas fa-check-circle fa-2x mb-3"></i>
                                             <p>No defaulters found! All customers are up to date with payments.</p>

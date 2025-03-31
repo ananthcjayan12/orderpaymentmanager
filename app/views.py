@@ -165,13 +165,58 @@ def home(request):
     
     # Get defaulters information
     defaulters = []
+    today_date = timezone.localdate()
+    
     for customer in customers:
-        balance = customer.outstanding_balance
-        if balance > 0:
-            customer.calculated_balance = balance
+        # Check if customer has any overdue orders
+        is_defaulter = False
+        overdue_amount = 0
+        default_types = set()
+        max_days_overdue = 0
+        
+        # Get all orders for this customer
+        customer_orders = Order.objects.filter(customer=customer)
+        
+        for order in customer_orders:
+            if order.order_type in ['B2C_READY_CASH', 'B2B_READY_CASH']:
+                # For ready cash orders, check if they're fully paid
+                total_paid = Payment.objects.filter(
+                    customer=customer,
+                    orders=order
+                ).aggregate(Sum('amount_received'))['amount_received__sum'] or 0
+                
+                if total_paid < order.total_amount:
+                    is_defaulter = True
+                    overdue_amount += order.total_amount - total_paid
+                    default_types.add('ready_cash')
+            
+            elif order.order_type in ['B2C_EMI', 'B2B_EMI']:
+                # For EMI orders, check for overdue installments
+                overdue_installments = order.order_payments.filter(
+                    status__in=['pending', 'partial'],
+                    due_date__lt=today_date
+                )
+                
+                if overdue_installments.exists():
+                    is_defaulter = True
+                    default_types.add('emi')
+                    
+                    # Calculate days overdue for each installment
+                    for installment in overdue_installments:
+                        overdue_amount += installment.remaining_amount
+                        days_overdue = (today_date - installment.due_date).days
+                        max_days_overdue = max(max_days_overdue, days_overdue)
+        
+        # Add customer to defaulters list if they have overdue payments
+        if is_defaulter and overdue_amount > 0:
+            customer.calculated_balance = overdue_amount
+            customer.default_info = {
+                'types': list(default_types),
+                'max_days_overdue': max_days_overdue
+            }
             defaulters.append(customer)
     
-    # Sort defaulters by balance (highest first)
+    # Sort defaulters by overdue amount (highest first)
     defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
     defaulters = defaulters[:5]  # Only show top 5 defaulters
     
@@ -376,22 +421,18 @@ def home(request):
         for order in orders.order_by('-created_at')[:50]:
             recent_activities_data.append({
                 'type': 'order',
-                'title': f'Order #{order.id}',
-                'description': f'{order.customer.name} - ₹{order.total_amount}',
-                'date': order.created_at,
-                'badge_class': 'bg-primary',
-                'icon_class': 'fa-shopping-cart',
+                'message': f"New order #{order.id} created for {order.customer.name}",
+                'timestamp': order.created_at,
+                'amount': order.total_amount,
                 'url': reverse_lazy('app:order-detail', kwargs={'pk': order.id})
             })
             
         for payment in payments.order_by('-created_at')[:50]:
             recent_activities_data.append({
                 'type': 'payment',
-                'title': f'Payment #{payment.id}',
-                'description': f'{payment.customer.name} - ₹{payment.amount_received}',
-                'date': payment.created_at,
-                'badge_class': 'bg-success',
-                'icon_class': 'fa-money-bill-wave',
+                'message': f"Payment of ₹{payment.amount_received} received from {payment.customer.name}",
+                'timestamp': payment.created_at,
+                'amount': payment.amount_received,
                 'url': reverse_lazy('app:payment-receipt', kwargs={'pk': payment.id})
             })
     else:
@@ -399,27 +440,23 @@ def home(request):
         for order in orders.filter(agent=request.user).order_by('-created_at')[:50]:
             recent_activities_data.append({
                 'type': 'order',
-                'title': f'Order #{order.id}',
-                'description': f'{order.customer.name} - ₹{order.total_amount}',
-                'date': order.created_at,
-                'badge_class': 'bg-primary',
-                'icon_class': 'fa-shopping-cart',
+                'message': f"You created order #{order.id} for {order.customer.name}",
+                'timestamp': order.created_at,
+                'amount': order.total_amount,
                 'url': reverse_lazy('app:order-detail', kwargs={'pk': order.id})
             })
             
         for payment in payments.filter(agent=request.user).order_by('-created_at')[:50]:
             recent_activities_data.append({
                 'type': 'payment',
-                'title': f'Payment #{payment.id}',
-                'description': f'{payment.customer.name} - ₹{payment.amount_received}',
-                'date': payment.created_at,
-                'badge_class': 'bg-success',
-                'icon_class': 'fa-money-bill-wave',
+                'message': f"You collected ₹{payment.amount_received} from {payment.customer.name}",
+                'timestamp': payment.created_at,
+                'amount': payment.amount_received,
                 'url': reverse_lazy('app:payment-receipt', kwargs={'pk': payment.id})
             })
     
-    # Sort by date (newest first)
-    recent_activities_data.sort(key=lambda x: x['date'], reverse=True)
+    # Sort by timestamp (newest first)
+    recent_activities_data.sort(key=lambda x: x['timestamp'], reverse=True)
     
     # Paginate activities
     activities_paginator = Paginator(recent_activities_data, 10)
@@ -1149,22 +1186,68 @@ class DefaultersListView(LoginRequiredMixin, ListView):
     context_object_name = 'defaulters'
     
     def get_queryset(self):
-        """Get customers with outstanding balances."""
+        """Get customers with overdue payments, distinguishing between ready cash and EMI orders."""
         company = self.request.user.company
+        today = timezone.localdate()
         
         # Get all customers for this company
         customers = Customer.objects.filter(company=company)
         
-        # Filter to include only those with positive balances
+        # Identify defaulters with more precise logic based on order types
         defaulters = []
+        
         for customer in customers:
-            balance = customer.outstanding_balance
-            if balance > 0:
-                customer.calculated_balance = balance
+            # Check if customer has any overdue orders
+            is_defaulter = False
+            overdue_amount = 0
+            default_types = set()
+            max_days_overdue = 0
+            
+            # Get all orders for this customer
+            customer_orders = Order.objects.filter(customer=customer)
+            
+            for order in customer_orders:
+                if order.order_type in ['B2C_READY_CASH', 'B2B_READY_CASH']:
+                    # For ready cash orders, check if they're fully paid
+                    total_paid = Payment.objects.filter(
+                        customer=customer,
+                        orders=order
+                    ).aggregate(Sum('amount_received'))['amount_received__sum'] or 0
+                    
+                    if total_paid < order.total_amount:
+                        is_defaulter = True
+                        overdue_amount += order.total_amount - total_paid
+                        default_types.add('ready_cash')
+                
+                elif order.order_type in ['B2C_EMI', 'B2B_EMI']:
+                    # For EMI orders, check for overdue installments
+                    overdue_installments = order.order_payments.filter(
+                        status__in=['pending', 'partial'],
+                        due_date__lt=today
+                    )
+                    
+                    if overdue_installments.exists():
+                        is_defaulter = True
+                        default_types.add('emi')
+                        
+                        # Calculate days overdue for each installment
+                        for installment in overdue_installments:
+                            overdue_amount += installment.remaining_amount
+                            days_overdue = (today - installment.due_date).days
+                            max_days_overdue = max(max_days_overdue, days_overdue)
+            
+            # Add customer to defaulters list if they have overdue payments
+            if is_defaulter and overdue_amount > 0:
+                customer.calculated_balance = overdue_amount
+                customer.default_info = {
+                    'types': list(default_types),
+                    'max_days_overdue': max_days_overdue
+                }
                 defaulters.append(customer)
         
-        # Sort by balance (highest first)
+        # Sort defaulters by overdue amount (highest first)
         defaulters.sort(key=lambda x: x.calculated_balance, reverse=True)
+        
         return defaulters
     
     def get_context_data(self, **kwargs):
