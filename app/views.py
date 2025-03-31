@@ -1086,6 +1086,7 @@ class OrderCreateView(LoginRequiredMixin, CreateView):
                             payment=placeholder_payment,  # Use the placeholder
                             amount=amount,
                             paid_amount=Decimal('0.00'),  # Initialize paid amount to zero
+                            status='pending',  # Explicitly set status to pending
                             installment_number=i,
                             due_date=current_date
                         )
@@ -1292,14 +1293,14 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         if filter_by == 'overdue':
             # Show orders with overdue payments
             orders = orders.filter(
-                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
+                order_payments__status__in=['pending', 'partial'],
                 order_payments__due_date__lt=today
             ).distinct()
         elif filter_by == 'this_week':
             # Show orders with payments due this week
             week_end = today + timezone.timedelta(days=7)
             orders = orders.filter(
-                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
+                order_payments__status__in=['pending', 'partial'],
                 order_payments__due_date__gte=today,
                 order_payments__due_date__lte=week_end
             ).distinct()
@@ -1308,7 +1309,7 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
             week_start = today + timezone.timedelta(days=7)
             week_end = today + timezone.timedelta(days=14)
             orders = orders.filter(
-                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
+                order_payments__status__in=['pending', 'partial'],
                 order_payments__due_date__gte=week_start,
                 order_payments__due_date__lte=week_end
             ).distinct()
@@ -1355,8 +1356,7 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
                     'due_date': op.due_date,
                     'amount': op.amount,
                     'paid_amount': op.paid_amount,
-                    'status': 'paid' if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" and op.paid_amount >= op.amount else 
-                             'partial' if op.paid_amount > 0 else 'pending',
+                    'status': op.status,  # Use the status field directly
                     'payment_date': op.payment.payment_date if op.payment and op.payment.notes != "Placeholder for EMI schedule - DO NOT USE" else None
                 }
                 payment_schedule.append(payment_status)
@@ -1399,13 +1399,13 @@ class UpcomingPaymentsView(LoginRequiredMixin, ListView):
         # Add statistics
         context['total_overdue'] = Order.objects.filter(
             company=self.request.user.company,
-            order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
+            order_payments__status__in=['pending', 'partial'],
             order_payments__due_date__lt=today
         ).distinct().count()
         
         context['total_due_this_week'] = Order.objects.filter(
             company=self.request.user.company,
-            order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE",
+            order_payments__status__in=['pending', 'partial'],
             order_payments__due_date__gte=today,
             order_payments__due_date__lte=today + timezone.timedelta(days=7)
         ).distinct().count()
@@ -1449,7 +1449,7 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
                     
                     # Get the earliest unpaid or partially paid installment
                     installment = order.order_payments.filter(
-                        payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                        status__in=['pending', 'partial']
                     ).order_by('due_date').first()
                     
                     if installment:
@@ -1464,7 +1464,7 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
             unpaid_orders = Order.objects.filter(
                 customer=customer,
                 order_type__in=['B2C_EMI', 'B2B_EMI'],
-                order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                order_payments__status__in=['pending', 'partial']
             ).distinct()
             
             # If there's only one unpaid order with EMI, pre-fill the amount
@@ -1490,26 +1490,26 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
                 # Save the payment
                 payment = form.save()
                 
-                # Get the customer's orders with placeholder payments
-                orders_with_placeholders = Order.objects.filter(
+                # Get the customer's orders with unpaid or partially paid installments
+                orders_with_unpaid = Order.objects.filter(
                     customer=payment.customer,
-                    order_payments__payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                    order_payments__status__in=['pending', 'partial']
                 ).distinct().order_by('order_date')
                 
                 remaining_amount = payment.amount_received
                 placeholders_to_delete = set()  # Track placeholders to delete
                 
                 # Distribute payment amount across unpaid orders
-                for order in orders_with_placeholders:
+                for order in orders_with_unpaid:
                     if remaining_amount <= 0:
                         break
                     
-                    # Get installments with placeholder payments
-                    placeholder_installments = order.order_payments.filter(
-                        payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                    # Get installments that need payment
+                    unpaid_installments = order.order_payments.filter(
+                        status__in=['pending', 'partial']
                     ).order_by('due_date')
                     
-                    for installment in placeholder_installments:
+                    for installment in unpaid_installments:
                         if remaining_amount <= 0:
                             break
                             
@@ -1526,6 +1526,7 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
                             # Update the installment with the real payment and mark as fully paid
                             installment.payment = payment
                             installment.paid_amount = installment.amount
+                            # Status will be automatically set to 'paid' in save() method
                             installment.save()
                         else:
                             # This is a partial payment
@@ -1535,12 +1536,14 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
                                 payment=payment,
                                 amount=amount_to_apply,
                                 paid_amount=amount_to_apply,
+                                # Status will be automatically set to 'paid' since paid_amount == amount
                                 installment_number=installment.installment_number,
                                 due_date=installment.due_date
                             )
                             
                             # Update the original installment's paid amount
                             installment.paid_amount += amount_to_apply
+                            # Status will be automatically updated to 'partial' in save() method
                             installment.save()
                         
                         remaining_amount -= amount_to_apply

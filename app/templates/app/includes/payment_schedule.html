@@ -68,15 +68,19 @@ Parameters:
                     <span class="badge bg-success">Paid</span>
                     <br><small class="text-muted">{{ order.payment_date }}</small>
                     {% else %}
-                        {% if order.order.order_payments.all.0.paid_amount > 0 %}
+                        {% with payment=order.order.order_payments.all.0 %}
+                        {% if payment.status == 'partial' %}
                         <span class="badge bg-warning">Partially Paid</span>
                         <small class="d-block">
-                            {{ order.order.order_payments.all.0.paid_amount|floatformat:2 }} / 
-                            {{ order.order.order_payments.all.0.amount|floatformat:2 }}
+                            {{ payment.paid_amount|floatformat:2 }} / 
+                            {{ payment.amount|floatformat:2 }}
                         </small>
+                        {% elif payment.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
                         {% else %}
                         <span class="badge bg-danger">Unpaid</span>
                         {% endif %}
+                        {% endwith %}
                     {% endif %}
                 </td>
                 <td>

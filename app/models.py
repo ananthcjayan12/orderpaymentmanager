@@ -180,12 +180,12 @@ class Order(models.Model):
         if has_placeholders:
             return False
             
-        # Check for any partially paid installments
-        partially_paid = self.order_payments.filter(
-            paid_amount__lt=F('amount')
+        # Check for any partially paid installments using the status field
+        incomplete_payments = self.order_payments.filter(
+            status__in=['pending', 'partial']
         ).exists()
         
-        if partially_paid:
+        if incomplete_payments:
             return False
         
         # If no placeholders and no partially paid installments, check the regular way
@@ -198,21 +198,17 @@ class Order(models.Model):
         """Return the due date of the earliest unpaid or partially paid installment."""
         if self.is_fully_paid:
             return None
-        # Find installments with placeholder payments or partially paid installments
+            
+        # Find installments that aren't fully paid using the status field
         unpaid_installments = self.order_payments.filter(
-            payment__notes="Placeholder for EMI schedule - DO NOT USE"
+            status__in=['pending', 'partial']
         ).order_by('due_date')
         
-        # Also consider partially paid installments
-        for installment in unpaid_installments:
-            if installment.paid_amount < installment.amount:
-                return installment.due_date
-        
-        # If all are fully paid but we got here, something might be wrong with is_fully_paid
-        # Return the first due date as a fallback
+        # Return the due date of the earliest unpaid or partially paid installment
         first_installment = unpaid_installments.first()
         if first_installment:
             return first_installment.due_date
+        
         return None
 
     def get_payment_schedule(self):
@@ -350,11 +346,19 @@ class Bank(models.Model):
 
 class OrderPayment(models.Model):
     """Model to track payments for each order."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Paid'),
+    ]
+    
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_payments')
     payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='order_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, 
                                     help_text="Amount already paid for this installment")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending',
+                             help_text="Current payment status for this installment")
     installment_number = models.PositiveIntegerField(null=True, blank=True)
     due_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -374,6 +378,16 @@ class OrderPayment(models.Model):
     def remaining_amount(self):
         """Calculate remaining amount for this installment"""
         return max(0, self.amount - self.paid_amount)
+    
+    def save(self, *args, **kwargs):
+        """Update status based on paid_amount before saving"""
+        if self.paid_amount >= self.amount:
+            self.status = 'paid'
+        elif self.paid_amount > 0:
+            self.status = 'partial'
+        else:
+            self.status = 'pending'
+        super().save(*args, **kwargs)
 
 class Payment(models.Model):
     """Model for payments."""
