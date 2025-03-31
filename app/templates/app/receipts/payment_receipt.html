@@ -1,61 +1,386 @@
-{% extends 'app/receipts/base_receipt.html' %}
-
-{% block document_details %}
-<div class="detail-row">
-    <span class="detail-label">Receipt No</span>
-    <span>#{{ payment.id|stringformat:"05d" }}</span>
-</div>
-<div class="detail-row">
-    <span class="detail-label">Date</span>
-    <span>{{ payment.payment_date|date:"d-M-Y" }}</span>
-</div>
-<div class="detail-row">
-    <span class="detail-label">Time</span>
-    <span>{{ payment.created_at|time:"H:i" }}</span>
-</div>
-{% if payment.bank %}
-<div class="detail-row">
-    <span class="detail-label">Bank Account</span>
-    <span>{{ payment.bank.name }}</span>
-</div>
-{% if payment.bank.account_number %}
-<div class="detail-row">
-    <span class="detail-label">Account No</span>
-    <span>{{ payment.bank.account_number }}</span>
-</div>
-{% endif %}
-{% endif %}
-{% endblock %}
-
-{% block items_table %}
-<table class="receipt-table">
-    <tr>
-        <th width="60%">Description</th>
-        <th class="amount-col">Amount</th>
-    </tr>
-    <tr>
-        <td>Payment Received</td>
-        <td class="amount-col">₹{{ payment.amount_received|floatformat:2 }}</td>
-    </tr>
-</table>
-
-<div class="total-section">
-    <div class="detail-row">
-        <span>Outstanding Balance</span>
-        <span>₹{{ payment.customer.outstanding_balance|floatformat:2 }}</span>
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt #{{ payment.id|stringformat:"05d" }}</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .invoice-container {
+            width: 21cm;
+            margin: 0 auto;
+            padding: 1cm;
+            box-sizing: border-box;
+        }
+        
+        /* Header Styling */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ccc;
+        }
+        
+        .company-info {
+            flex: 1;
+        }
+        
+        .company-info h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            color: #2a4b8d;
+        }
+        
+        .company-info p {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        
+        .invoice-title {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: right;
+            color: #2a4b8d;
+            margin-bottom: 15px;
+        }
+        
+        .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        
+        .invoice-details-left {
+            flex: 1;
+        }
+        
+        .invoice-details-right {
+            flex: 1;
+            text-align: right;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .info-value {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        /* Items Table Styling */
+        .invoice-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .invoice-items th {
+            background-color: #2a4b8d;
+            color: white;
+            text-align: left;
+            padding: 12px;
+            font-size: 14px;
+        }
+        
+        .invoice-items td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        
+        .invoice-items tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .invoice-items th:last-child,
+        .invoice-items td:last-child,
+        .invoice-items th.number-col,
+        .invoice-items td.number-col {
+            text-align: right;
+        }
+        
+        /* Totals and Footer Styling */
+        .totals-section {
+            width: 60%;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .totals-table td {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        .totals-table .total-label {
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .totals-table .total-value {
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .totals-table .grand-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2a4b8d;
+            background-color: #f9f9f9;
+        }
+        
+        .remarks-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        
+        /* Print Controls */
+        .print-controls {
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .print-button {
+            padding: 10px 20px;
+            background-color: #2a4b8d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-link {
+            padding: 10px 20px;
+            background-color: #666;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .whatsapp-button {
+            padding: 10px 20px;
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .whatsapp-button i {
+            font-size: 20px;
+        }
+        
+        /* Print Media Styles */
+        @media print {
+            .print-controls {
+                display: none;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .invoice-container {
+                width: 100%;
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                padding: 0.5cm;
+            }
+            
+            /* Ensure page breaks don't disrupt important content */
+            .invoice-header, .invoice-details, .invoice-items-container, .totals-section, .remarks-section, .authorized-signature {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Print controls - hidden when printing -->
+    <div class="print-controls">
+        <button onclick="window.print()" class="print-button">
+            <i class="fas fa-print"></i> Print Receipt
+        </button>
+        
+        <!-- WhatsApp share button -->
+        <a href="https://wa.me/{{ payment.customer.mobile1|cut:'+' }}?text=Please%20find%20your%20payment%20receipt%20from%20{{ payment.company.name|urlencode }}%20for%20₹{{ payment.amount_received|floatformat:2 }}" 
+           target="_blank" 
+           class="whatsapp-button">
+            <i class="fab fa-whatsapp"></i> Share via WhatsApp
+        </a>
+        
+        <a href="{{ back_url }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
     </div>
-</div>
-{% endblock %}
 
-{% block notes %}
-{% if payment.notes %}
-<div class="notes-section">
-    <strong>Notes:</strong><br>
-    {{ payment.notes }}
-</div>
-{% endif %}
-{% endblock %}
+    <!-- Receipt content -->
+    <div class="invoice-container">
+        <!-- Header with company & receipt details -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h2>{{ payment.company.name|upper }}</h2>
+                <p>{{ payment.company.address|default:"" }}</p>
+                <p>Tel: {{ payment.company.phone|default:"" }}</p>
+                {% if payment.company.email %}
+                <p>Email: {{ payment.company.email }}</p>
+                {% endif %}
+                {% if payment.company.gstin %}
+                <p>GSTIN: {{ payment.company.gstin }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <div class="invoice-title">PAYMENT RECEIPT</div>
+            </div>
+        </div>
+        
+        <!-- Receipt/Customer Details -->
+        <div class="invoice-details">
+            <div class="invoice-details-left">
+                <div class="info-title">To:</div>
+                <div class="info-value">{{ payment.customer.name }}</div>
+                <div class="info-value">{{ payment.customer.address }}</div>
+                <div class="info-value">Tel: {{ payment.customer.mobile1 }}</div>
+                {% if payment.customer.mobile2 %}
+                <div class="info-value">Alt: {{ payment.customer.mobile2 }}</div>
+                {% endif %}
+            </div>
+            <div class="invoice-details-right">
+                <div class="info-title">Receipt No:</div>
+                <div class="info-value">{{ payment.id|stringformat:"05d" }}</div>
+                <div class="info-title">Date:</div>
+                <div class="info-value">{{ payment.payment_date|date:"d/m/y" }}</div>
+                <div class="info-title">Time:</div>
+                <div class="info-value">{{ payment.created_at|time:"H:i" }}</div>
+                {% if payment.bank %}
+                <div class="info-title">Account:</div>
+                <div class="info-value">{{ payment.bank.name }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Items Table -->
+        <div class="invoice-items-container">
+            <table class="invoice-items">
+                <thead>
+                    <tr>
+                        <th style="width: 70%;">Description</th>
+                        <th class="number-col" style="width: 30%;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Payment Received</td>
+                        <td class="number-col">₹{{ payment.amount_received|floatformat:2 }}</td>
+                    </tr>
+                    
+                    <!-- Orders associated with this payment -->
+                    {% for op in payment.order_payments.all %}
+                    <tr>
+                        <td>
+                            <small>
+                                Order #{{ op.order.id }} - 
+                                {% if op.paid_amount == op.amount %}Full Payment
+                                {% else %}Partial Payment ({{ op.paid_amount|floatformat:2 }}/{{ op.amount|floatformat:2 }})
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="number-col">
+                            <small>₹{{ op.paid_amount|floatformat:2 }}</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    <!-- Empty row to fill space if few items -->
+                    {% if payment.order_payments.all|length < 5 %}
+                    <tr style="height: 100px;">
+                        <td colspan="2"></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td class="total-label">Total Received:</td>
+                    <td class="total-value">₹{{ payment.amount_received|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td class="total-label">Outstanding Balance:</td>
+                    <td class="total-value">₹{{ payment.customer.outstanding_balance|floatformat:2 }}</td>
+                </tr>
+                <tr class="grand-total">
+                    <td class="total-label">Total Amount:</td>
+                    <td class="total-value">₹{{ payment.amount_received|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Remarks Section -->
+        {% if payment.notes %}
+        <div class="remarks-section">
+            <strong>Notes:</strong><br>
+            {{ payment.notes }}
+        </div>
+        {% endif %}
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for your payment!</p>
+            <p>This is a computer generated receipt. No signature is required.</p>
+            <p>For any questions regarding this receipt, please contact us at {{ payment.company.phone|default:"" }}.</p>
+        </div>
+    </div>
 
-{% block footer_message %}
-Thank you for your payment!
-{% endblock %} 
+    <!-- Add FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</body>
+</html> 
