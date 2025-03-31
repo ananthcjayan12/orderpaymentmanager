@@ -122,7 +122,7 @@
                                                     <td>
                                                         <div class="btn-group">
                                                             {% if not order.is_fully_paid %}
-                                                            <a href="{% url 'app:customer-payment-create' group.customer.id %}" class="btn btn-sm btn-outline-success">
+                                                            <a href="{% url 'app:customer-payment-create' group.customer.id %}?order_id={{ order.order.id }}{% if order.order.order_payments.all.0.paid_amount > 0 %}&remaining={{ order.order.order_payments.all.0.remaining_amount|floatformat:2 }}{% endif %}" class="btn btn-sm btn-outline-success">
                                                                 <i class="fas fa-money-bill-wave"></i>
                                                             </a>
                                                             {% endif %}

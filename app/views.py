@@ -665,7 +665,7 @@ def process_customer_csv(csv_file, company):
             if row.get('initial_balance'):
                 try:
                     initial_balance = Decimal(str(row.get('initial_balance', '0.00')))
-                except (ValueError, TypeError, Decimal.InvalidOperation):
+                except (ValueError, TypeError, InvalidOperation):
                     errors.append(f"Row {row_num}: Invalid initial balance value")
                     continue
             
@@ -1315,7 +1315,37 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
         customer_id = self.kwargs.get('customer_id')
         if customer_id:
             initial['customer'] = customer_id
-            # Get customer's unpaid orders
+            
+            # Check if we have an order ID in query params
+            order_id = self.request.GET.get('order_id')
+            remaining = self.request.GET.get('remaining')
+            
+            # If we have both an order ID and remaining amount, use that
+            if order_id and remaining:
+                try:
+                    initial['amount_received'] = Decimal(remaining)
+                    return initial
+                except (InvalidOperation, TypeError):
+                    pass  # Fall back to other logic if decimal conversion fails
+            
+            # If we have just an order ID, try to calculate the remaining amount
+            elif order_id:
+                try:
+                    order = Order.objects.get(id=order_id, customer_id=customer_id)
+                    
+                    # Get the earliest unpaid or partially paid installment
+                    installment = order.order_payments.filter(
+                        payment__notes="Placeholder for EMI schedule - DO NOT USE"
+                    ).order_by('due_date').first()
+                    
+                    if installment:
+                        # Use the remaining amount for this installment
+                        initial['amount_received'] = installment.remaining_amount
+                        return initial
+                except (Order.DoesNotExist, Exception):
+                    pass  # Fall back to other logic if order not found
+            
+            # Get customer's unpaid orders (original logic)
             customer = Customer.objects.get(pk=customer_id)
             unpaid_orders = Order.objects.filter(
                 customer=customer,
