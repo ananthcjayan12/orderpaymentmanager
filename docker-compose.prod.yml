@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: postgres_db_prod
+    restart: always
+    environment:
+      - POSTGRES_DB=order_payment_db
+      - POSTGRES_USER=order_payment_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secretpassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    container_name: order_payment_web_prod
+    restart: always
+    volumes:
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "8010:8000"
+    depends_on:
+      - db
+    environment:
+      - DEBUG=False
+      - DJANGO_SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DATABASE_ENGINE=django.db.backends.postgresql
+      - DATABASE_NAME=order_payment_db
+      - DATABASE_USER=order_payment_user
+      - DATABASE_PASSWORD=${DB_PASSWORD:-secretpassword}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
