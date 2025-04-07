@@ -11,6 +11,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-secretpassword}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - backup_volume:/data/backups
     ports:
       - "5432:5432"
 
@@ -21,6 +22,7 @@ services:
     volumes:
       - static_volume:/app/static
       - media_volume:/app/media
+      - backup_volume:/data/backups
     ports:
       - "8010:8000"
     depends_on:
@@ -35,6 +37,9 @@ services:
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
       - PYTHONUNBUFFERED=1
+      # Backup configuration
+      - BACKUP_DIR=/data/backups
+      - RETENTION_DAYS=30
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
@@ -44,3 +49,10 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
+  backup_volume:
+    # You can uncomment and modify the following line to specify an external named volume
+    # or a specific host path for backups
+    # driver_opts:
+    #   type: none
+    #   device: /path/on/host/system/backups
+    #   o: bind

@@ -114,4 +114,23 @@ scheduled-backup:
 	@echo "Running scheduled backup..."
 	@$(MAKE) backup-db-gz
 	@echo "Removing backups older than 30 days..."
-	@find $(BACKUP_DIR) -name "order_payment_db_*.sql.gz" -type f -mtime +30 -delete 
+	@find $(BACKUP_DIR) -name "order_payment_db_*.sql.gz" -type f -mtime +30 -delete
+
+# Run the backup script inside the container
+run-backup-script:
+	@echo "Running backup script in production container..."
+	docker-compose -f docker-compose.prod.yml exec web bash -c "/app/scripts/db_backup.sh full"
+
+# Copy backups from container to local machine
+fetch-latest-backup:
+	@echo "Fetching latest backup from container..."
+	@mkdir -p $(BACKUP_DIR)
+	@container_id=$$(docker-compose -f docker-compose.prod.yml ps -q web); \
+	latest_backup=$$(docker exec $$container_id find /data/backups -name "*.gz" -type f -printf "%T@ %p\n" | sort -nr | head -n1 | cut -d' ' -f2); \
+	if [ -z "$$latest_backup" ]; then \
+		echo "No backups found in container"; \
+		exit 1; \
+	fi; \
+	filename=$$(basename $$latest_backup); \
+	docker cp $$container_id:$$latest_backup $(BACKUP_DIR)/; \
+	echo "Latest backup copied to $(BACKUP_DIR)/$$filename" 
