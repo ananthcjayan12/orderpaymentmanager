@@ -26,7 +26,7 @@ services:
     depends_on:
       - db
     environment:
-      - DEBUG=False
+      - DEBUG=True
       - DJANGO_SECRET_KEY=${SECRET_KEY:-your-secret-key}
       - DATABASE_ENGINE=django.db.backends.postgresql
       - DATABASE_NAME=order_payment_db
