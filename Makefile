@@ -69,4 +69,49 @@ shell-prod:
 # Run Django management commands in production
 django-command-prod:
 	@echo "Usage: make django-command-prod CMD='your_command'"
-	@docker-compose -f docker-compose.prod.yml run --rm web python manage.py $(CMD) 
+	@docker-compose -f docker-compose.prod.yml run --rm web python manage.py $(CMD)
+
+# Database Backup and Restore Commands
+# -----------------------------------
+
+# Create backup directory if it doesn't exist
+BACKUP_DIR = ./backups
+$(shell mkdir -p $(BACKUP_DIR))
+
+# Get current date for backup filename
+BACKUP_FILENAME = order_payment_db_$(shell date +%Y%m%d_%H%M%S).sql
+
+# Backup the production database
+backup-db:
+	@echo "Creating database backup: $(BACKUP_DIR)/$(BACKUP_FILENAME)"
+	docker-compose -f docker-compose.prod.yml exec db pg_dump -U order_payment_user -d order_payment_db > $(BACKUP_DIR)/$(BACKUP_FILENAME)
+	@echo "Backup completed: $(BACKUP_DIR)/$(BACKUP_FILENAME)"
+
+# List all available backups
+list-backups:
+	@echo "Available database backups:"
+	@ls -lh $(BACKUP_DIR)
+
+# Restore the database from a backup file
+# Usage: make restore-db BACKUP_FILE=backups/your_backup_file.sql
+restore-db:
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "Error: BACKUP_FILE is required. Usage: make restore-db BACKUP_FILE=backups/your_backup_file.sql"; \
+		exit 1; \
+	fi
+	@echo "Restoring database from $(BACKUP_FILE)..."
+	docker-compose -f docker-compose.prod.yml exec -T db psql -U order_payment_user -d order_payment_db < $(BACKUP_FILE)
+	@echo "Database restored successfully."
+
+# Create a compressed backup of the production database
+backup-db-gz:
+	@echo "Creating compressed database backup..."
+	docker-compose -f docker-compose.prod.yml exec db pg_dump -U order_payment_user -d order_payment_db | gzip > $(BACKUP_DIR)/$(BACKUP_FILENAME).gz
+	@echo "Compressed backup completed: $(BACKUP_DIR)/$(BACKUP_FILENAME).gz"
+
+# Scheduled backup (can be used with cron)
+scheduled-backup:
+	@echo "Running scheduled backup..."
+	@$(MAKE) backup-db-gz
+	@echo "Removing backups older than 30 days..."
+	@find $(BACKUP_DIR) -name "order_payment_db_*.sql.gz" -type f -mtime +30 -delete 
